@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Card from "./Card";
 import {
   CalendarIcon,
@@ -11,7 +12,6 @@ import {
 } from "./icons";
 
 const navItems = [
-  { label: "Pipelines", icon: ChartIcon, active: true },
   { label: "Datasets", icon: FolderIcon },
   { label: "Lineage", icon: MapPinIcon },
   { label: "Access", icon: ShieldIcon },
@@ -21,7 +21,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="flex w-full flex-col gap-8 border-b border-slate-100/80 bg-white/90 px-6 py-8 lg:h-screen lg:w-72 lg:border-b-0 lg:border-r">
+    <aside className="flex w-full flex-col gap-8 self-stretch border-b border-slate-100/80 bg-white/90 px-6 py-8 lg:min-h-full lg:w-72 lg:border-b-0 lg:border-r">
       <div className="flex items-center gap-3 text-slate-900">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
           <CrossIcon className="h-6 w-6" />
@@ -32,7 +32,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <button
+      {/* <button
         type="button"
         className="group flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
       >
@@ -40,9 +40,22 @@ export default function Sidebar() {
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-lg">
           +
         </span>
-      </button>
+      </button> */}
 
       <nav className="flex flex-col gap-2 text-sm font-medium text-slate-600">
+        <Link
+          href="/pipelines"
+          className="flex items-center gap-3 rounded-xl bg-slate-900 px-3 py-2.5 text-left text-white shadow-sm transition"
+        >
+          <ChartIcon className="h-5 w-5" />
+          Pipelines
+        </Link>
+        <Link
+          href="/pipelines/deposits"
+          className="ml-8 rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 transition hover:bg-slate-100"
+        >
+          Deposits
+        </Link>
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
