@@ -3,11 +3,8 @@ import DepositsUpload from "@/components/pipelines/DepositsUpload";
 
 export default function DepositsPage() {
   return (
-    <div className="max-w-6xl">
-      <div className="flex flex-col gap-3">
-        <Link href="/pipelines" className="text-xs font-semibold text-slate-500">
-          &larr; Volver a Pipelines
-        </Link>
+    <div className="mx-auto max-w-6xl">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold text-slate-900">
@@ -20,7 +17,7 @@ export default function DepositsPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <DepositsUpload />
       </div>
     </div>
