@@ -21,6 +21,7 @@ const navItems = [
     subItems: [
       { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
       { label: "Deposits Query", href: "/datasets/deposits_query" },
+      { label: "Client Exonerated", href: "/datasets/client_exonerated" },
     ],
   },
   { label: "Lineage", icon: MapPinIcon },
@@ -74,6 +75,16 @@ export default function Sidebar() {
           }`}
         >
           Deposits
+        </Link>
+        <Link
+          href="/pipelines/client_exonerated"
+          className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${
+            pathname === "/pipelines/client_exonerated"
+              ? "bg-slate-100 text-slate-900"
+              : "text-slate-500"
+          }`}
+        >
+          Client Exonerated
         </Link>
         {navItems.map((item) => {
           const Icon = item.icon;
