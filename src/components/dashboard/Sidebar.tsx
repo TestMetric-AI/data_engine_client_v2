@@ -18,7 +18,10 @@ const navItems = [
   {
     label: "Datasets",
     icon: FolderIcon,
-    subItems: [{ label: "Deposits DP10", href: "/datasets/deposits_dp_10" }],
+    subItems: [
+      { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
+      { label: "Deposits Query", href: "/datasets/deposits_query" },
+    ],
   },
   { label: "Lineage", icon: MapPinIcon },
   { label: "Access", icon: ShieldIcon },
