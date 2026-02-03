@@ -1,8 +1,29 @@
-import { BellIcon, SearchIcon } from "./icons";
+"use client";
+
+import { useSession, signOut } from "next-auth/react";
+import { useState, useRef, useEffect } from "react";
+import { BellIcon, SearchIcon, LogOutIcon } from "./icons";
 
 export default function Topbar() {
+  const { data: session } = useSession();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-100/80 bg-white/80 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
+    <div className="sticky top-0 z-30 flex flex-col gap-4 border-b border-slate-100/80 bg-white/80 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
       <div className="relative flex w-full max-w-md items-center gap-3 rounded-2xl bg-slate-100/70 px-4 py-2 text-slate-500">
         <SearchIcon className="h-5 w-5" />
         <input
@@ -19,12 +40,42 @@ export default function Topbar() {
           <BellIcon className="h-5 w-5" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-400" />
         </button>
-        <div className="flex items-center gap-3 rounded-full bg-slate-100 px-3 py-2">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-800 to-slate-500" />
-          <div className="text-sm">
-            <p className="font-semibold text-slate-800">Emma Kwan</p>
-            <p className="text-xs text-slate-500">Platform Admin</p>
-          </div>
+
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-3 rounded-full bg-slate-50 pl-2 pr-4 py-1.5 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:ring-slate-300"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-medium text-white ring-2 ring-white">
+              {session?.user?.name
+                ? session.user.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2)
+                : "U"}
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-slate-700">
+                {session?.user?.name || "User"}
+              </p>
+            </div>
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-white py-1 shadow-xl ring-1 ring-black/5 focus:outline-none z-50">
+              <div className="p-1">
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-red-50 hover:text-red-600"
+                >
+                  <LogOutIcon className="h-4 w-4" />
+                  Sign out
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

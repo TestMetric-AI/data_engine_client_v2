@@ -98,7 +98,7 @@ export default function DepositsDatasetPage() {
       const matchesExonerated =
         exoneratedFilter === "ALL" ||
         (row.TIENE_SOLICITUD_EXONERACION ?? "").toUpperCase() ===
-          exoneratedFilter;
+        exoneratedFilter;
       return matchesSearch && matchesExonerated;
     });
   }, [rows, search, exoneratedFilter]);
@@ -125,7 +125,7 @@ export default function DepositsDatasetPage() {
   }, [pagination.page, pagination.totalPages]);
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-500">Datasets</p>
@@ -217,11 +217,10 @@ export default function DepositsDatasetPage() {
                     onClick={() =>
                       setPagination((prev) => ({ ...prev, page }))
                     }
-                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                      page === pagination.page
-                        ? "bg-slate-900 text-white"
-                        : "border border-slate-200 bg-white text-slate-600"
-                    }`}
+                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
+                      ? "bg-slate-900 text-white"
+                      : "border border-slate-200 bg-white text-slate-600"
+                      }`}
                   >
                     {page}
                   </button>
@@ -242,11 +241,11 @@ export default function DepositsDatasetPage() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="min-w-full border-collapse text-left text-sm">
             <thead className="border-b border-slate-100 text-xs uppercase text-slate-400">
               <tr>
                 {columns.map((column) => (
-                  <th key={column} className="px-3 py-3">
+                  <th key={column} className="whitespace-nowrap px-3 py-3">
                     {column}
                   </th>
                 ))}
@@ -289,7 +288,7 @@ export default function DepositsDatasetPage() {
                     {columns.map((column) => (
                       <td
                         key={`${column}-${index}`}
-                        className="px-3 py-3 text-slate-600"
+                        className="whitespace-nowrap px-3 py-3 text-slate-600"
                       >
                         {row[column as keyof DepositRow] ?? "-"}
                       </td>
@@ -322,11 +321,10 @@ export default function DepositsDatasetPage() {
                 key={`bottom-${page}`}
                 type="button"
                 onClick={() => setPagination((prev) => ({ ...prev, page }))}
-                className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                  page === pagination.page
-                    ? "bg-slate-900 text-white"
-                    : "border border-slate-200 bg-white text-slate-600"
-                }`}
+                className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
+                  ? "bg-slate-900 text-white"
+                  : "border border-slate-200 bg-white text-slate-600"
+                  }`}
               >
                 {page}
               </button>
