@@ -47,10 +47,7 @@ export default function DepositsQueryPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResponse | null>(null);
 
-  const baseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_ETL_API_BASE_URL ?? "http://localhost:3000",
-    []
-  );
+
 
   const hasAnyFilter = Object.values(form).some((value) => value.trim() !== "");
   const hasEffectiveRange =
@@ -135,7 +132,7 @@ export default function DepositsQueryPage() {
     try {
       setStatus("loading");
       const response = await fetch(
-        `${baseUrl}/deposits/query?${params.toString()}`
+        `/api/deposits/query?${params.toString()}`
       );
 
       if (response.status === 404) {

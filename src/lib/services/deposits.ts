@@ -1,0 +1,662 @@
+import { parse } from "csv-parse/sync";
+import { z } from "zod";
+import { turso } from "@/lib/turso";
+import { Client } from "@libsql/client";
+
+export const DEPOSITS_DP10_TABLE = "deposits_dp10";
+
+export const DEPOSITS_DP10_COLUMNS = [
+    "NUMERO_CONTRATO",
+    "FECHA_NEGOCIACION",
+    "FECHA_EFECTIVA",
+    "CODIGO_OFICINA",
+    "NUM_PRODUCTO",
+    "NUM_PRODUCTO_LEGADO",
+    "NUM_RECIBO_APERTURA",
+    "NUM_RECIBO_CANCELACION",
+    "ID_GRUPO_PRODUCTO",
+    "ID_PRODUCTO",
+    "MNEMONIC",
+    "ID_CUSTOMER",
+    "ID_CUSTOMER_ROLE",
+    "MONTO_APERTURA",
+    "MONEDA",
+    "PLAZO",
+    "ID_BASE_TIEMPO",
+    "NUM_CERT_FISICO",
+    "ID_METODO_FONDEO",
+    "COD_VERIFICACION",
+    "NUM_CTA_ORIG_LEGADO",
+    "NUM_CTA_ORIG",
+    "MONTO_ORIG_FONDEO",
+    "MONTO_EFEC_FONDEO",
+    "TIPO_CHEQUE",
+    "MONTO_CHEQ_FONDEO",
+    "MONTO_DP_CANCELADO",
+    "CTA_BANCO_CENTRAL",
+    "TASA_OPERACION",
+    "TASA_POOL",
+    "FREC_PAGO_INT",
+    "TIPO_PAGO_INT",
+    "ID_ACERCAMIENTO",
+    "FORMA_PAGO_INT",
+    "CTA_PAGO_INT_LEGADO",
+    "CTA_PAGO_INT",
+    "USR_REG_APERTURA",
+    "FECHA_REG_APERTURA",
+    "USR_APROBO_APERTURA",
+    "FECHA_APROBO_APERTURA",
+    "OFICIAL_RELACION",
+    "ESTADO_PRODUCTO",
+    "FECHA_VENCIMIENTO",
+    "FECHA_ULT_RENOVACION",
+    "FECHA_PROX_RENOVACION",
+    "FECHA_PROXIMO_PAGO",
+    "FECHA_ULT_MOVIMIENTO",
+    "SALDO_CAPITAL_ACTUAL",
+    "INTERES_ACUMULADO",
+    "INTERES_DEVENGADO",
+    "SALDO_CIERRE",
+    "TOTAL_EMBARGO_PARCIAL",
+    "CTA_INTERNA_FONDEO",
+    "CTA_INTERNA_INT_PAGADEROS",
+    "ID_MOTIVO_CANCELACION",
+    "COMISION_MINIMA",
+    "TIENE_SOLICITUD_EXONERACION",
+    "USR_SOLICITA_EXONERACION",
+    "FECHA_SOLICITUD_EXONERACION",
+    "USR_APROBO_EXONERACION",
+    "FECHA_APROBO_EXONERACION",
+    "ESTADO_SOLICITUD_EXONERACION",
+    "COMISION_CALCULADA",
+    "COMISION_EXONERADA",
+    "COMISION_PAGAR",
+    "MONTO_RETEN_IMP_INT",
+    "ID_FORMA_PAGO_CANCEL",
+    "DESC_FORMA_PAGO_CANCEL",
+    "CTA_CANCELACION_LEGADO",
+    "CTA_CANCELACION",
+    "ID_CANAL_CANCELACION",
+    "CTA_CANCEL_CRE_CTA_INTERNA",
+    "USR_REG_CANCELACION",
+    "USR_APR_CANCELACION",
+    "FECHA_REG_CANCELACION",
+    "FECHA_APR_CANCELACION",
+    "FECHA_CANCELACION",
+    "REL_TITULARES",
+    "FECHA_ORIG_CONTRATO",
+];
+
+const DEPOSITS_DP10_EXTRA_COLUMNS = [
+    "LEGAL_ID",
+    "LEGAL_DOC",
+    "EXONERATED",
+    "USED",
+    "TIMES_USED",
+];
+
+const EXTRA_COLUMN_TYPES: Record<string, string> = {
+    LEGAL_ID: "TEXT",
+    LEGAL_DOC: "TEXT",
+    EXONERATED: "BOOLEAN",
+    USED: "BOOLEAN DEFAULT 0",
+    TIMES_USED: "INTEGER DEFAULT 0",
+};
+
+const DECIMAL_FIELDS = new Set([
+    "MONTO_APERTURA",
+    "MONTO_ORIG_FONDEO",
+    "MONTO_EFEC_FONDEO",
+    "MONTO_CHEQ_FONDEO",
+    "MONTO_DP_CANCELADO",
+    "SALDO_CAPITAL_ACTUAL",
+    "INTERES_ACUMULADO",
+    "INTERES_DEVENGADO",
+    "SALDO_CIERRE",
+    "TOTAL_EMBARGO_PARCIAL",
+    "COMISION_MINIMA",
+    "COMISION_CALCULADA",
+    "COMISION_EXONERADA",
+    "COMISION_PAGAR",
+    "MONTO_RETEN_IMP_INT",
+]);
+
+const RATE_FIELDS = new Set(["TASA_OPERACION", "TASA_POOL"]);
+
+const DATE_8_FIELDS = new Set([
+    "FECHA_EFECTIVA",
+    "FECHA_VENCIMIENTO",
+    "FECHA_ULT_RENOVACION",
+    "FECHA_PROX_RENOVACION",
+    "FECHA_PROXIMO_PAGO",
+    "FECHA_ULT_MOVIMIENTO",
+    "FECHA_CANCELACION",
+    "FECHA_ORIG_CONTRATO",
+]);
+
+const DATE_10_FIELDS = new Set([
+    "FECHA_NEGOCIACION",
+    "FECHA_REG_APERTURA",
+    "FECHA_APROBO_APERTURA",
+    "FECHA_SOLICITUD_EXONERACION",
+    "FECHA_APROBO_EXONERACION",
+    "FECHA_REG_CANCELACION",
+    "FECHA_APR_CANCELACION",
+]);
+
+const ENUM_FIELDS: Record<string, string[]> = {
+    TIENE_SOLICITUD_EXONERACION: ["SI", "NO"],
+};
+
+const DECIMAL_REGEX = /^-?(?:\d+|\d*\.\d+)(?:[eE][+-]?\d+)?$/;
+const DATE_8_REGEX = /^\d{8}$/;
+const DATE_10_REGEX = /^\d{10}$/;
+
+function normalizeDate8(value: string): string {
+    return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+}
+
+function normalizeDate10(value: string): string {
+    const year = `20${value.slice(0, 2)}`;
+    const month = value.slice(2, 4);
+    const day = value.slice(4, 6);
+    return `${year}-${month}-${day}`;
+}
+
+export type DepositsValidationError = {
+    row: number;
+    column: string;
+    value: string;
+    message: string;
+};
+
+export type DepositsRow = Record<string, string | number | null>;
+
+export type DepositsParseResult = {
+    rows: DepositsRow[];
+    errors: DepositsValidationError[];
+};
+
+const EMPTY_TO_NULL = (value: unknown) => {
+    if (value === undefined || value === null) {
+        return null;
+    }
+    if (typeof value !== "string") {
+        return value;
+    }
+    const trimmed = value.trim();
+    return trimmed.length === 0 ? null : trimmed;
+};
+
+const depositsRowSchema: z.ZodType<DepositsRow> = z.object(
+    Object.fromEntries(
+        DEPOSITS_DP10_COLUMNS.map((column) => {
+            if (DECIMAL_FIELDS.has(column) || RATE_FIELDS.has(column)) {
+                return [
+                    column,
+                    z.preprocess(
+                        (value) => {
+                            if (value === undefined || value === null) {
+                                return null;
+                            }
+                            if (typeof value !== "string") {
+                                return value;
+                            }
+                            const trimmed = value.trim();
+                            if (trimmed.length === 0) {
+                                return null;
+                            }
+                            if (DECIMAL_REGEX.test(trimmed)) {
+                                return Number(trimmed);
+                            }
+                            return value;
+                        },
+                        z.number({ message: "Debe ser un numero decimal." }).nullable()
+                    ),
+                ];
+            }
+
+            if (DATE_8_FIELDS.has(column)) {
+                return [
+                    column,
+                    z.preprocess(
+                        EMPTY_TO_NULL,
+                        z
+                            .string()
+                            .regex(DATE_8_REGEX, "Debe ser una fecha con formato YYYYMMDD.")
+                            .transform(normalizeDate8)
+                            .nullable()
+                    ),
+                ];
+            }
+
+            if (DATE_10_FIELDS.has(column)) {
+                return [
+                    column,
+                    z.preprocess(
+                        EMPTY_TO_NULL,
+                        z
+                            .string()
+                            .regex(
+                                DATE_10_REGEX,
+                                "Debe ser una fecha con formato YYMMDDHHMM."
+                            )
+                            .transform(normalizeDate10)
+                            .nullable()
+                    ),
+                ];
+            }
+
+            const enumValues = ENUM_FIELDS[column];
+            if (enumValues) {
+                return [
+                    column,
+                    z.preprocess(
+                        (value) => {
+                            if (value === undefined || value === null) {
+                                return null;
+                            }
+                            if (typeof value !== "string") {
+                                return value;
+                            }
+                            const trimmed = value.trim();
+                            if (trimmed.length === 0) {
+                                return null;
+                            }
+                            return trimmed.toUpperCase();
+                        },
+                        z.union([
+                            z.enum(enumValues as [string, ...string[]], {
+                                message: `Debe ser uno de: ${enumValues.join(", ")}.`,
+                            }),
+                            z.null(),
+                        ])
+                    ),
+                ];
+            }
+
+            return [column, z.preprocess(EMPTY_TO_NULL, z.string().nullable())];
+        })
+    )
+) as z.ZodType<DepositsRow>;
+
+export function parseDepositsCsv(buffer: Buffer): DepositsParseResult {
+    let headers: string[] = [];
+
+    const records = parse(buffer, {
+        columns: (header: string[]) => {
+            headers = header;
+            return header;
+        },
+        delimiter: "|",
+        skip_empty_lines: true,
+        bom: true,
+        trim: true,
+        relax_column_count: true,
+        quote: null,
+    }) as Record<string, string>[];
+
+    const errors: DepositsValidationError[] = [];
+    const headerError = validateHeaders(headers);
+    if (headerError) {
+        errors.push(headerError);
+        return { rows: [], errors };
+    }
+
+    const normalizedRows: DepositsRow[] = [];
+
+    records.forEach((row, index) => {
+        const rowNumber = index + 2;
+        const rowErrors = validateRow(row, rowNumber);
+        errors.push(...rowErrors);
+        if (rowErrors.length > 0) {
+            return;
+        }
+
+        const normalized = depositsRowSchema.safeParse(row);
+        if (!normalized.success) {
+            normalized.error.issues.forEach((issue) => {
+                const column = issue.path[0]?.toString() ?? "ROW";
+                errors.push({
+                    row: rowNumber,
+                    column,
+                    value: row[column] ?? "",
+                    message: issue.message,
+                });
+            });
+            return;
+        }
+
+        normalizedRows.push(normalized.data);
+    });
+
+    return { rows: normalizedRows, errors };
+}
+
+function validateHeaders(headers: string[]): DepositsValidationError | null {
+    if (headers.length !== DEPOSITS_DP10_COLUMNS.length) {
+        return {
+            row: 1,
+            column: "HEADER",
+            value: headers.join("|"),
+            message: "Cantidad de columnas invalida para deposits_dp10.",
+        };
+    }
+
+    for (let i = 0; i < DEPOSITS_DP10_COLUMNS.length; i += 1) {
+        if (headers[i] !== DEPOSITS_DP10_COLUMNS[i]) {
+            return {
+                row: 1,
+                column: "HEADER",
+                value: headers.join("|"),
+                message:
+                    "El orden o los nombres de columnas no coinciden con deposits_dp10.",
+            };
+        }
+    }
+
+    return null;
+}
+
+function validateRow(
+    row: Record<string, string>,
+    rowNumber: number
+): DepositsValidationError[] {
+    const errors: DepositsValidationError[] = [];
+
+    for (const column of DEPOSITS_DP10_COLUMNS) {
+        const rawValue = row[column] ?? "";
+        const value = rawValue.trim();
+
+        if (value.length === 0) {
+            continue;
+        }
+
+        if (DECIMAL_FIELDS.has(column) || RATE_FIELDS.has(column)) {
+            if (!DECIMAL_REGEX.test(value)) {
+                errors.push({
+                    row: rowNumber,
+                    column,
+                    value,
+                    message: "Debe ser un numero decimal.",
+                });
+            }
+            continue;
+        }
+
+        if (DATE_8_FIELDS.has(column)) {
+            if (!DATE_8_REGEX.test(value)) {
+                errors.push({
+                    row: rowNumber,
+                    column,
+                    value,
+                    message: "Debe ser una fecha con formato YYYYMMDD.",
+                });
+            }
+            continue;
+        }
+
+        if (DATE_10_FIELDS.has(column)) {
+            if (!DATE_10_REGEX.test(value)) {
+                errors.push({
+                    row: rowNumber,
+                    column,
+                    value,
+                    message: "Debe ser una fecha con formato YYMMDDHHMM.",
+                });
+            }
+            continue;
+        }
+
+        const enumValues = ENUM_FIELDS[column];
+        if (enumValues && !enumValues.includes(value)) {
+            errors.push({
+                row: rowNumber,
+                column,
+                value,
+                message: `Debe ser uno de: ${enumValues.join(", ")}.`,
+            });
+        }
+    }
+
+    return errors;
+}
+
+export async function ensureDepositsTable(): Promise<void> {
+    const tableColumns = [
+        ...DEPOSITS_DP10_COLUMNS,
+        ...DEPOSITS_DP10_EXTRA_COLUMNS,
+    ];
+    const columnDefs = tableColumns
+        .map((column) => {
+            const type = getColumnType(column);
+            return `"${column}" ${type}`;
+        })
+        .join(", ");
+
+    const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_DP10_TABLE} (${columnDefs});`;
+    await turso.execute(createSql);
+    await ensureExtraColumns();
+}
+
+export async function insertDeposits(rows: DepositsRow[]): Promise<number> {
+    if (rows.length === 0) {
+        return 0;
+    }
+
+    await ensureDepositsTable();
+
+    const columnsSql = DEPOSITS_DP10_COLUMNS.map((col) => `"${col}"`).join(", ");
+    const placeholders = DEPOSITS_DP10_COLUMNS.map(() => "?").join(", ");
+    const insertSql = `INSERT INTO ${DEPOSITS_DP10_TABLE} (${columnsSql}) VALUES (${placeholders});`;
+
+    const transaction = await turso.transaction("write");
+
+    try {
+        for (const row of rows) {
+            const values = DEPOSITS_DP10_COLUMNS.map((column) =>
+                normalizeValue(column, row[column] ?? "")
+            );
+            // LibSQL client handles types reasonably well.
+            // We need to cast ensure values are primitives supported by SQLite.
+            await transaction.execute({
+                sql: insertSql,
+                args: values as any[],
+            });
+        }
+        await transaction.commit();
+    } catch (error) {
+        await transaction.close(); // In LibSQL, rollback is often implicit on close/error, but strict control is good.
+        throw error;
+    }
+
+    return rows.length;
+}
+
+export async function clearDeposits(): Promise<void> {
+    await ensureDepositsTable();
+    await turso.execute(`DELETE FROM ${DEPOSITS_DP10_TABLE};`);
+}
+
+export type DepositsQueryFilters = {
+    NUMERO_CONTRATO?: string;
+    NUM_PRODUCTO?: string;
+    ID_PRODUCTO?: string;
+    ID_CUSTOMER?: string;
+    MONEDA?: string;
+    PLAZO?: string;
+    ESTADO_PRODUCTO?: string;
+    FECHA_NEGOCIACION_HASTA?: string;
+    FECHA_EFECTIVA_DESDE?: string;
+    FECHA_EFECTIVA_HASTA?: string;
+};
+
+export async function findDepositByFilters(
+    filters: DepositsQueryFilters
+): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
+    await ensureDepositsTable();
+
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    const exactFilters: Array<keyof DepositsQueryFilters> = [
+        "NUMERO_CONTRATO",
+        "NUM_PRODUCTO",
+        "ID_PRODUCTO",
+        "ID_CUSTOMER",
+        "MONEDA",
+        "PLAZO",
+        "ESTADO_PRODUCTO",
+    ];
+
+    for (const key of exactFilters) {
+        const value = filters[key];
+        if (value) {
+            conditions.push(`"${key}" = ?`);
+            args.push(value);
+        }
+    }
+
+    if (filters.FECHA_NEGOCIACION_HASTA) {
+        conditions.push(`"FECHA_NEGOCIACION" <= ?`);
+        args.push(filters.FECHA_NEGOCIACION_HASTA);
+    }
+
+    if (filters.FECHA_EFECTIVA_DESDE && filters.FECHA_EFECTIVA_HASTA) {
+        conditions.push(`"FECHA_EFECTIVA" BETWEEN ? AND ?`);
+        args.push(filters.FECHA_EFECTIVA_DESDE);
+        args.push(filters.FECHA_EFECTIVA_HASTA);
+    }
+
+    const whereClause =
+        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_DP10_TABLE}${whereClause} LIMIT 1;`;
+
+    const result = await turso.execute({ sql, args });
+
+    if (result.rows.length === 0) return null;
+
+    // Convert row to record
+    const row = result.rows[0];
+    const record: Record<string, unknown> = {};
+    result.columns.forEach((col, idx) => {
+        record[col] = row[idx];
+    });
+
+    return record as (Record<string, unknown> & { __rowid?: number | null });
+}
+
+export async function markDepositUsedByRowId(rowId: number): Promise<void> {
+    await ensureDepositsTable();
+    await turso.execute({
+        sql: `UPDATE ${DEPOSITS_DP10_TABLE}
+          SET USED = 1,
+              TIMES_USED = COALESCE(TIMES_USED, 0) + 1
+          WHERE rowid = ?;`,
+        args: [rowId],
+    });
+}
+
+export type DepositsPage = {
+    rows: Record<string, unknown>[];
+    total: number;
+};
+
+export async function listDeposits(
+    limit: number,
+    offset: number
+): Promise<DepositsPage> {
+    await ensureDepositsTable();
+
+    const countResult = await turso.execute(
+        `SELECT COUNT(*) as total FROM ${DEPOSITS_DP10_TABLE};`
+    );
+    const total = Number(countResult.rows[0][0] ?? 0);
+
+    const dataResult = await turso.execute({
+        sql: `SELECT * FROM ${DEPOSITS_DP10_TABLE}
+          ORDER BY FECHA_NEGOCIACION DESC, NUMERO_CONTRATO ASC
+          LIMIT ? OFFSET ?;`,
+        args: [limit, offset],
+    });
+
+    const rows = dataResult.rows.map((row) => {
+        const record: Record<string, unknown> = {};
+        dataResult.columns.forEach((col, idx) => {
+            record[col] = row[idx];
+        });
+        return record;
+    });
+
+    return { rows, total };
+}
+
+function normalizeValue(
+    column: string,
+    rawValue: string | number | null
+): string | number | null {
+    if (rawValue === null) {
+        return null;
+    }
+
+    if (typeof rawValue === "number") {
+        return rawValue;
+    }
+
+    const value = rawValue.trim();
+    if (value.length === 0) {
+        return null;
+    }
+
+    if (DECIMAL_FIELDS.has(column) || RATE_FIELDS.has(column)) {
+        return Number(value);
+    }
+
+    return value;
+}
+
+function getColumnType(column: string): string {
+    const extraType = EXTRA_COLUMN_TYPES[column];
+    if (extraType) {
+        return extraType;
+    }
+
+    if (RATE_FIELDS.has(column) || DECIMAL_FIELDS.has(column)) {
+        return "numeric"; // SQLite affinity
+    }
+
+    return "text";
+}
+
+async function ensureExtraColumns(): Promise<void> {
+    // Pragma table_info returns cid, name, type, notnull, dflt_value, pk
+    const infoResult = await turso.execute(`PRAGMA table_info(${DEPOSITS_DP10_TABLE});`);
+    const existing = new Set<string>();
+
+    infoResult.rows.forEach(row => {
+        // name is usually the 2nd column (index 1) in SQLite pragma output
+        // verify manually or map by column name if library provides it
+        // LibSQL default response includes columns
+        const nameIdx = infoResult.columns.indexOf("name");
+        if (typeof row[nameIdx] === 'string') {
+            existing.add(row[nameIdx] as string);
+        }
+    });
+
+
+    for (const column of DEPOSITS_DP10_EXTRA_COLUMNS) {
+        if (existing.has(column)) {
+            continue;
+        }
+        const columnType = EXTRA_COLUMN_TYPES[column] ?? "TEXT";
+        try {
+            await turso.execute(
+                `ALTER TABLE ${DEPOSITS_DP10_TABLE} ADD COLUMN "${column}" ${columnType};`
+            );
+        } catch (e) {
+            // Ignore if column exists race condition
+        }
+    }
+}
+
+

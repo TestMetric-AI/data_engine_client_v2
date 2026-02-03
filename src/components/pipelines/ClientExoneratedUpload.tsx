@@ -28,11 +28,6 @@ export default function ClientExoneratedUpload() {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const baseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_ETL_API_BASE_URL ?? "http://localhost:3000",
-    []
-  );
-
   const isFileNameValid = file ? fileNameRegex.test(file.name) : false;
   const canSubmit = Boolean(file && isFileNameValid && status !== "uploading");
 
@@ -68,7 +63,7 @@ export default function ClientExoneratedUpload() {
     formData.append("file", file);
 
     const query = mode === "overwrite" ? "?overwrite=true" : "";
-    const url = `${baseUrl}/uploads/client-exonerated${query}`;
+    const url = `/api/client-exonerated${query}`;
 
     try {
       setStatus("uploading");
@@ -135,11 +130,10 @@ export default function ClientExoneratedUpload() {
             </h3>
           </div>
           <label
-            className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-6 text-center text-sm transition ${
-              isDragging
-                ? "border-violet-400 bg-violet-50 text-violet-700"
-                : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
-            }`}
+            className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-6 text-center text-sm transition ${isDragging
+              ? "border-violet-400 bg-violet-50 text-violet-700"
+              : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+              }`}
             onDragOver={(event) => {
               event.preventDefault();
               setIsDragging(true);
@@ -208,11 +202,10 @@ export default function ClientExoneratedUpload() {
               </div>
             </label>
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm ${
-                mode === "overwrite"
-                  ? "border-rose-300 bg-rose-50 text-rose-700"
-                  : "border-slate-200 bg-white text-slate-600"
-              }`}
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm ${mode === "overwrite"
+                ? "border-rose-300 bg-rose-50 text-rose-700"
+                : "border-slate-200 bg-white text-slate-600"
+                }`}
             >
               <input
                 type="radio"

@@ -30,11 +30,6 @@ export default function ClientExoneratedPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const baseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_ETL_API_BASE_URL ?? "http://localhost:3000",
-    []
-  );
-
   useEffect(() => {
     let isMounted = true;
     async function loadRows() {
@@ -46,7 +41,7 @@ export default function ClientExoneratedPage() {
           pageSize: String(pagination.pageSize),
         });
         const response = await fetch(
-          `${baseUrl}/client-exonerated?${params.toString()}`
+          `/api/client-exonerated?${params.toString()}`
         );
         if (!response.ok) {
           throw new Error("No se pudo cargar el listado.");
@@ -75,7 +70,7 @@ export default function ClientExoneratedPage() {
     return () => {
       isMounted = false;
     };
-  }, [baseUrl, pagination.page, pagination.pageSize]);
+  }, [pagination.page, pagination.pageSize]);
 
   const filteredRows = useMemo(() => {
     const normalized = search.trim().toLowerCase();
