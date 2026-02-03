@@ -75,29 +75,29 @@ export default function DepositsQueryPage() {
     label: string;
     type?: string;
   }> = [
-    { key: "NUMERO_CONTRATO", label: "Numero contrato" },
-    { key: "NUM_PRODUCTO", label: "Num producto" },
-    { key: "ID_PRODUCTO", label: "ID producto" },
-    { key: "ID_CUSTOMER", label: "ID customer" },
-    { key: "MONEDA", label: "Moneda" },
-    { key: "PLAZO", label: "Plazo" },
-    { key: "ESTADO_PRODUCTO", label: "Estado producto" },
-    {
-      key: "FECHA_NEGOCIACION_HASTA",
-      label: "Fecha negociacion hasta",
-      type: "date",
-    },
-    {
-      key: "FECHA_EFECTIVA_DESDE",
-      label: "Fecha efectiva desde",
-      type: "date",
-    },
-    {
-      key: "FECHA_EFECTIVA_HASTA",
-      label: "Fecha efectiva hasta",
-      type: "date",
-    },
-  ];
+      { key: "NUMERO_CONTRATO", label: "Numero contrato" },
+      { key: "NUM_PRODUCTO", label: "Num producto" },
+      { key: "ID_PRODUCTO", label: "ID producto" },
+      { key: "ID_CUSTOMER", label: "ID customer" },
+      { key: "MONEDA", label: "Moneda" },
+      { key: "PLAZO", label: "Plazo" },
+      { key: "ESTADO_PRODUCTO", label: "Estado producto" },
+      {
+        key: "FECHA_NEGOCIACION_HASTA",
+        label: "Fecha negociacion hasta",
+        type: "date",
+      },
+      {
+        key: "FECHA_EFECTIVA_DESDE",
+        label: "Fecha efectiva desde",
+        type: "date",
+      },
+      {
+        key: "FECHA_EFECTIVA_HASTA",
+        label: "Fecha efectiva hasta",
+        type: "date",
+      },
+    ];
 
   function handleChange(key: keyof QueryForm, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -160,7 +160,7 @@ export default function DepositsQueryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-7xl">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-500">Datasets</p>
@@ -247,11 +247,11 @@ export default function DepositsQueryPage() {
             </span>
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
+            <table className="min-w-full border-collapse text-left text-sm">
               <thead className="border-b border-slate-100 text-xs uppercase text-slate-400">
                 <tr>
                   {resultColumns.map((key) => (
-                    <th key={key} className="px-3 py-3">
+                    <th key={key} className="whitespace-nowrap px-3 py-3">
                       {key}
                     </th>
                   ))}
@@ -282,7 +282,7 @@ export default function DepositsQueryPage() {
                 ) : result?.data ? (
                   <tr className="border-b border-slate-50 text-slate-600">
                     {resultColumns.map((key) => (
-                      <td key={key} className="px-3 py-3 text-slate-600">
+                      <td key={key} className="whitespace-nowrap px-3 py-3 text-slate-600">
                         {result.data[key] ?? "-"}
                       </td>
                     ))}

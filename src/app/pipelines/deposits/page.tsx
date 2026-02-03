@@ -3,7 +3,7 @@ import DepositsUpload from "@/components/pipelines/DepositsUpload";
 
 export default function DepositsPage() {
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-full">
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
