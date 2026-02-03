@@ -1,13 +1,15 @@
- "use client";
+"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import Card from "./Card";
 import {
   CalendarIcon,
   ChartIcon,
   CrossIcon,
   FolderIcon,
+  LogOutIcon,
   MapPinIcon,
   SettingsIcon,
   ShieldIcon,
@@ -45,44 +47,31 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* <button
-        type="button"
-        className="group flex items-center justify-between rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
-      >
-        New ingestion
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-lg">
-          +
-        </span>
-      </button> */}
-
       <nav className="flex flex-col gap-2 text-sm font-medium text-slate-600">
         <div
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
-            isPipelinesActive
-              ? "bg-slate-900 text-white shadow-sm"
-              : "text-slate-600"
-          }`}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${isPipelinesActive
+            ? "bg-slate-900 text-white shadow-sm"
+            : "text-slate-600"
+            }`}
         >
           <ChartIcon className="h-5 w-5" />
           Pipelines
         </div>
         <Link
           href="/pipelines/deposits"
-          className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${
-            pathname === "/pipelines/deposits"
-              ? "bg-slate-100 text-slate-900"
-              : "text-slate-500"
-          }`}
+          className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === "/pipelines/deposits"
+            ? "bg-slate-100 text-slate-900"
+            : "text-slate-500"
+            }`}
         >
           Deposits
         </Link>
         <Link
           href="/pipelines/client_exonerated"
-          className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${
-            pathname === "/pipelines/client_exonerated"
-              ? "bg-slate-100 text-slate-900"
-              : "text-slate-500"
-          }`}
+          className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === "/pipelines/client_exonerated"
+            ? "bg-slate-100 text-slate-900"
+            : "text-slate-500"
+            }`}
         >
           Client Exonerated
         </Link>
@@ -101,11 +90,10 @@ export default function Sidebar() {
                 <Link
                   key={subItem.href}
                   href={subItem.href}
-                  className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${
-                    pathname === subItem.href
-                      ? "bg-slate-100 text-slate-900"
-                      : "text-slate-500"
-                  }`}
+                  className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === subItem.href
+                    ? "bg-slate-100 text-slate-900"
+                    : "text-slate-500"
+                    }`}
                 >
                   {subItem.label}
                 </Link>
@@ -115,7 +103,15 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-2 lg:mt-auto">
+      {/* <div className="mt-2 lg:mt-auto">
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="mb-4 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600"
+        >
+          <LogOutIcon className="h-5 w-5" />
+          Sign out
+        </button>
+
         <Card className="bg-gradient-to-br from-slate-100 via-white to-slate-50 p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">
@@ -145,7 +141,7 @@ export default function Sidebar() {
             </button>
           </div>
         </Card>
-      </div>
+      </div> */}
     </aside>
   );
 }

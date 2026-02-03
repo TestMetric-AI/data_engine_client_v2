@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Space_Grotesk } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const sora = Sora({
@@ -27,7 +28,7 @@ export default function RootLayout({
       <body
         className={`${sora.variable} ${spaceGrotesk.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
