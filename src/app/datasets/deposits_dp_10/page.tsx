@@ -40,11 +40,6 @@ export default function DepositsDatasetPage() {
     "ALL" | "SI" | "NO"
   >("ALL");
 
-  const baseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_ETL_API_BASE_URL ?? "http://localhost:3000",
-    []
-  );
-
   useEffect(() => {
     let isMounted = true;
     async function loadRows() {
@@ -55,7 +50,7 @@ export default function DepositsDatasetPage() {
           page: String(pagination.page),
           pageSize: String(pagination.pageSize),
         });
-        const response = await fetch(`${baseUrl}/deposits?${params.toString()}`);
+        const response = await fetch(`/api/deposits?${params.toString()}`);
         if (!response.ok) {
           throw new Error("No se pudo cargar el listado.");
         }
@@ -83,7 +78,7 @@ export default function DepositsDatasetPage() {
     return () => {
       isMounted = false;
     };
-  }, [baseUrl, pagination.page, pagination.pageSize]);
+  }, [pagination.page, pagination.pageSize]);
 
   const filteredRows = useMemo(() => {
     const normalized = search.trim().toLowerCase();
