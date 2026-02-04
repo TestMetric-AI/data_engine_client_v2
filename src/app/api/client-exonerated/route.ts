@@ -6,8 +6,13 @@ import {
     listClientExonerated,
     parseClientExoneratedXlsx,
 } from "@/lib/services/client-exonerated";
+import { verifyApiAuth } from "@/lib/auth-helper";
 
 export async function GET(request: NextRequest) {
+    if (!(await verifyApiAuth(request))) {
+        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const page = Number(searchParams.get("page") ?? "1");
     const pageSize = Number(searchParams.get("pageSize") ?? "100");
@@ -43,6 +48,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+    if (!(await verifyApiAuth(request))) {
+        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const formData = await request.formData();
         const file = formData.get("file") as File | null;

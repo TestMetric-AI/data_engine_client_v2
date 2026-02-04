@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import prisma from "./db";
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma),
+    adapter: PrismaAdapter(prisma as any),
     session: {
         strategy: "jwt",
     },
@@ -28,6 +28,9 @@ export const authOptions: NextAuthOptions = {
                     where: {
                         email: credentials.email,
                     },
+                    include: {
+                        roles: true,
+                    },
                 });
 
                 if (!user) {
@@ -47,6 +50,7 @@ export const authOptions: NextAuthOptions = {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+                    roles: user.roles.map((role) => role.name),
                 };
             },
         }),
@@ -54,14 +58,15 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         async session({ session, token }) {
             if (token && session.user) {
-                // Add id to session.user if needed
-                // session.user.id = token.id as string;
+                session.user.id = token.id;
+                session.user.roles = token.roles;
             }
             return session;
         },
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
+                token.roles = user.roles;
             }
             return token;
         },

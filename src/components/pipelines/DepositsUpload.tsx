@@ -103,36 +103,36 @@ export default function DepositsUpload() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-slate-100/80 bg-white/90 p-6 shadow-sm shadow-slate-200/40"
+      className="rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40"
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
             Registro de Depositos
           </p>
-          <h2 className="mt-1 font-display text-xl font-semibold text-slate-900">
+          <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">
             Carga CSV con validaciones
           </h2>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
           Step-based flow
         </span>
       </div>
 
       <div className="mt-6 space-y-6">
-        <section className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+        <section className="rounded-2xl border border-border bg-surface p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 shadow-sm">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-xs font-semibold text-text-secondary shadow-sm">
               1
             </span>
-            <h3 className="text-sm font-semibold text-slate-800">
+            <h3 className="text-sm font-semibold text-text-primary">
               Select CSV file
             </h3>
           </div>
           <label
             className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-6 text-center text-sm transition ${isDragging
-              ? "border-violet-400 bg-violet-50 text-violet-700"
-              : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
+              ? "border-primary bg-primary/5 text-primary"
+              : "border-border bg-card text-text-secondary hover:border-text-secondary"
               }`}
             onDragOver={(event) => {
               event.preventDefault();
@@ -149,17 +149,17 @@ export default function DepositsUpload() {
                 handleFileSelection(event.target.files?.[0] ?? null)
               }
             />
-            <span className="font-semibold text-slate-700">
+            <span className="font-semibold text-text-primary">
               Drag & drop your file here
             </span>
-            <span className="mt-1 text-xs text-slate-400">
+            <span className="mt-1 text-xs text-text-secondary">
               Or click to browse
             </span>
           </label>
-          <div className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
+          <div className="mt-3 rounded-xl bg-card px-3 py-2 text-xs text-text-secondary shadow-sm">
             {file ? (
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-700">
+                <span className="font-semibold text-text-primary">
                   {file.name}
                 </span>
                 <span>{formatBytes(file.size)}</span>
@@ -175,28 +175,28 @@ export default function DepositsUpload() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+        <section className="rounded-2xl border border-border bg-surface p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 shadow-sm">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-xs font-semibold text-text-secondary shadow-sm">
               2
             </span>
-            <h3 className="text-sm font-semibold text-slate-800">Load mode</h3>
+            <h3 className="text-sm font-semibold text-text-primary">Load mode</h3>
           </div>
           <div className="mt-4 grid gap-3">
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-card px-3 py-3 text-sm text-text-secondary">
               <input
                 type="radio"
                 name="load-mode"
                 value="append"
                 checked={mode === "append"}
                 onChange={() => setMode("append")}
-                className="mt-1 h-4 w-4 text-violet-600"
+                className="mt-1 h-4 w-4 text-primary"
               />
               <div>
-                <p className="font-semibold text-slate-700">
+                <p className="font-semibold text-text-primary">
                   Append data (recommended)
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-text-secondary">
                   Adds new rows and keeps existing records.
                 </p>
               </div>
@@ -204,7 +204,7 @@ export default function DepositsUpload() {
             <label
               className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 text-sm ${mode === "overwrite"
                 ? "border-rose-300 bg-rose-50 text-rose-700"
-                : "border-slate-200 bg-white text-slate-600"
+                : "border-border bg-card text-text-secondary"
                 }`}
             >
               <input
@@ -227,36 +227,36 @@ export default function DepositsUpload() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-100 bg-white p-4">
+        <section className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white shadow-sm">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white shadow-sm">
               3
             </span>
-            <h3 className="text-sm font-semibold text-slate-800">Upload</h3>
+            <h3 className="text-sm font-semibold text-text-primary">Upload</h3>
           </div>
           <button
             type="submit"
             disabled={!canSubmit}
-            className="mt-4 flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+            className="mt-4 flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
           >
             {status === "uploading" ? "Validating schema..." : "Upload & ingest"}
           </button>
         </section>
 
-        <section className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-          <h3 className="text-sm font-semibold text-slate-800">
+        <section className="rounded-2xl border border-border bg-surface p-4">
+          <h3 className="text-sm font-semibold text-text-primary">
             Upload feedback
           </h3>
-          <div className="mt-4 grid gap-3 text-sm text-slate-600">
-            <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 shadow-sm">
+          <div className="mt-4 grid gap-3 text-sm text-text-secondary">
+            <div className="flex items-center justify-between rounded-xl bg-card px-3 py-2 shadow-sm">
               <span>Detected rows</span>
-              <span className="font-semibold text-slate-800">120,450</span>
+              <span className="font-semibold text-text-primary">120,450</span>
             </div>
-            <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 shadow-sm">
+            <div className="flex items-center justify-between rounded-xl bg-card px-3 py-2 shadow-sm">
               <span>Validation</span>
               <span className="font-semibold text-emerald-600">Success</span>
             </div>
-            <div className="rounded-xl bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
+            <div className="rounded-xl bg-card px-3 py-2 text-xs text-text-secondary shadow-sm">
               Data passed schema checks. Minor warnings: 2 duplicated rows.
             </div>
             <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-700">

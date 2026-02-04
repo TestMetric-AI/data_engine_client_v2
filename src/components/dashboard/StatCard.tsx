@@ -26,13 +26,13 @@ export default function StatCard({
           {icon}
         </div>
         <div>
-          <p className="text-sm text-slate-500">{title}</p>
-          <p className="font-display text-2xl font-semibold text-slate-900">
+          <p className="text-sm text-text-secondary">{title}</p>
+          <p className="font-display text-2xl font-semibold text-text-primary">
             {value}
           </p>
         </div>
       </div>
-      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+      <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
         {delta}
       </span>
     </Card>
