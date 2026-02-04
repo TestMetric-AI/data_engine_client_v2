@@ -35,15 +35,13 @@ Create a new long-lived API Token.
 | :--- | :--- | :--- | :--- |
 | `email` | string | **Yes** | Service User Email |
 | `password` | string | **Yes** | Service User Password |
-| `name` | string | **Yes** | Description name for the token |
-| `expiresIn` | string | No | Duration e.g. '365d' (default: 365d) |
 
 **Example Request:**
 
 ```bash
 curl -X POST "https://your-domain.com/api/admin/tokens" \
   -H "Content-Type: application/json" \
-  -d '{"email": "service@example.com", "password": "secure_password", "name": "Python ETL Script", "expiresIn": "30d"}'
+  -d '{"email": "service@example.com", "password": "secure_password"}'
 ```
 
 **Response:**

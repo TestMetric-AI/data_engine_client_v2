@@ -8,10 +8,10 @@ const SECRET = process.env.NEXTAUTH_SECRET || "fallback_secret";
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { email, password, name, expiresIn } = body;
+        const { email, password } = body;
 
-        if (!email || !password || !name) {
-            return NextResponse.json({ error: "Missing required fields: email, password, name" }, { status: 400 });
+        if (!email || !password) {
+            return NextResponse.json({ error: "Missing required fields: email, password" }, { status: 400 });
         }
 
         // 1. Find User
@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
             id: user.id,
             email: user.email,
             role: "SERVICE",
-            type: "api_token",
-            name: name
+            type: "api_token"
         };
 
+        // Fixed expiration of 1 year as requested (user choice removed)
         const token = jwt.sign(payload, SECRET, {
-            expiresIn: expiresIn || "365d"
+            expiresIn: "365d"
         });
 
         return NextResponse.json({

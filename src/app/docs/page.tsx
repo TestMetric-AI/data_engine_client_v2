@@ -110,13 +110,11 @@ export default function ApiDocsPage() {
                             description="Create a new long-lived API Token for Service Users. Requires credentials."
                             params={[
                                 { name: "email", type: "string (body)", required: true, desc: "Service User Email" },
-                                { name: "password", type: "string (body)", required: true, desc: "Service User Password" },
-                                { name: "name", type: "string (body)", required: true, desc: "Description name for the token" },
-                                { name: "expiresIn", type: "string (body)", required: false, desc: "Duration e.g. '365d' (default: 365d)" }
+                                { name: "password", type: "string (body)", required: true, desc: "Service User Password" }
                             ]}
                             curl={`curl -X POST "${typeof window !== 'undefined' ? window.location.origin : 'https://api.example.com'}/api/admin/tokens" \\
   -H "Content-Type: application/json" \\
-  -d '{"email": "service@example.com", "password": "password123", "name": "External Service", "expiresIn": "30d"}'`}
+  -d '{"email": "service@example.com", "password": "password123"}'`}
                         />
                     </section>
                 </div>
