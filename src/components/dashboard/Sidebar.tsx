@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   CalendarIcon,
   ChartIcon,
@@ -13,6 +14,7 @@ import {
   UsersIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  UserPlusIcon,
 } from "./icons";
 
 const navItems = [
@@ -33,6 +35,7 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isPipelinesActive = pathname.startsWith("/pipelines");
 
@@ -126,7 +129,20 @@ export default function Sidebar() {
             </div>
           );
         })}
+        {/* Admin Link */}
+        {session?.user?.roles?.includes("ADMIN") && (
+          <Link
+            href="/admin/users/register"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-100 ${pathname === "/admin/users/register"
+              ? "bg-slate-100 text-slate-900"
+              : "text-slate-600"
+              } ${isCollapsed ? "justify-center px-2" : ""}`}
+          >
+            <UserPlusIcon className="h-5 w-5 shrink-0" />
+            {!isCollapsed && <span>Register User</span>}
+          </Link>
+        )}
       </nav>
-    </aside>
+    </aside >
   );
 }
