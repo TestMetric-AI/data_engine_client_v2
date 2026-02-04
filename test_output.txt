@@ -1,0 +1,29 @@
+FAIL src/lib/services/__tests__/deposits.test.ts
+  parseDepositsCsv
+    ├ù should parse valid CSV data correctly (13 ms)
+    ΓêÜ should return error for invalid header
+    ΓêÜ should validate decimal fields (2 ms)
+
+  ΓùÅ parseDepositsCsv ΓÇ║ should parse valid CSV data correctly
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 0
+    Received length: 21
+    Received array:  [{"column": "MONTO_ORIG_FONDEO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_22"}, {"column": "MONTO_EFEC_FONDEO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_23"}, {"column": "MONTO_CHEQ_FONDEO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_25"}, {"column": "MONTO_DP_CANCELADO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_26"}, {"column": "TASA_OPERACION", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_28"}, {"column": "TASA_POOL", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_29"}, {"column": "FECHA_APROBO_APERTURA", "message": "Debe ser una fecha con formato YYMMDDHHMM.", "row": 2, "value": "20230101"}, {"column": "INTERES_ACUMULADO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_48"}, {"column": "INTERES_DEVENGADO", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_49"}, {"column": "SALDO_CIERRE", "message": "Debe ser un numero decimal.", "row": 2, "value": "value_50"}, ΓÇª]
+
+      22 |         const result = parseDepositsCsv(buffer);
+      23 |
+    > 24 |         expect(result.errors).toHaveLength(0);
+         |                               ^
+      25 |         expect(result.rows).toHaveLength(1);
+      26 |         expect(result.rows[0].MONTO_APERTURA).toBe(1000.50);
+      27 |     });
+
+      at Object.<anonymous> (src/lib/services/__tests__/deposits.test.ts:24:31)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 2 passed, 3 total
+Snapshots:   0 total
+Time:        1.298 s
+Ran all test suites matching src/lib/services/__tests__/deposits.test.ts.
