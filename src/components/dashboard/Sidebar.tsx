@@ -58,8 +58,8 @@ export default function Sidebar() {
         </div>
         {!isCollapsed && (
           <div className="whitespace-nowrap transition-opacity duration-200">
-            <p className="font-display text-lg font-semibold">ETL Pulse</p>
-            <p className="text-xs text-slate-500">DuckDB analytics</p>
+            <p className="font-display text-lg font-semibold">Data Engine</p>
+            <p className="text-xs text-slate-500">Analitica</p>
           </div>
         )}
       </div>
@@ -67,8 +67,8 @@ export default function Sidebar() {
       <nav className="flex flex-col gap-2 text-sm font-medium text-slate-600">
         <div
           className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${isPipelinesActive
-              ? "bg-slate-900 text-white shadow-sm"
-              : "text-slate-600"
+            ? "bg-slate-900 text-white shadow-sm"
+            : "text-slate-600"
             } ${isCollapsed ? "justify-center px-2" : ""}`}
         >
           <ChartIcon className="h-5 w-5 shrink-0" />
@@ -80,8 +80,8 @@ export default function Sidebar() {
             <Link
               href="/pipelines/deposits"
               className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === "/pipelines/deposits"
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-500"
+                ? "bg-slate-100 text-slate-900"
+                : "text-slate-500"
                 }`}
             >
               Deposits
@@ -89,8 +89,8 @@ export default function Sidebar() {
             <Link
               href="/pipelines/client_exonerated"
               className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === "/pipelines/client_exonerated"
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-500"
+                ? "bg-slate-100 text-slate-900"
+                : "text-slate-500"
                 }`}
             >
               Client Exonerated
@@ -116,8 +116,8 @@ export default function Sidebar() {
                     key={subItem.href}
                     href={subItem.href}
                     className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-slate-100 ${pathname === subItem.href
-                        ? "bg-slate-100 text-slate-900"
-                        : "text-slate-500"
+                      ? "bg-slate-100 text-slate-900"
+                      : "text-slate-500"
                       }`}
                   >
                     {subItem.label}
