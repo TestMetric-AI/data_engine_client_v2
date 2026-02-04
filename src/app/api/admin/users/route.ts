@@ -82,3 +82,69 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+
+export async function GET(req: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        }
+
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                roles: {
+                    select: {
+                        name: true,
+                    },
+                },
+                isActive: true,
+                createdAt: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return NextResponse.json(users);
+    } catch (error) {
+        console.error("Fetch users error:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
+    }
+}
+
+export async function PATCH(req: NextRequest) {
+    try {
+        const session = await getServerSession(authOptions);
+
+        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        }
+
+        const body = await req.json();
+        const { userId, isActive } = body;
+
+        if (!userId || typeof isActive !== "boolean") {
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        }
+
+        const updatedUser = await prisma.user.update({
+            where: { id: userId },
+            data: { isActive },
+        });
+
+        return NextResponse.json(updatedUser);
+    } catch (error) {
+        console.error("Update user error:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error" },
+            { status: 500 }
+        );
+    }
+}
