@@ -659,4 +659,16 @@ async function ensureExtraColumns(): Promise<void> {
     }
 }
 
+export async function getDistinctCustomers(): Promise<string[]> {
+    await ensureDepositsTable();
+    const result = await turso.execute(
+        `SELECT DISTINCT ID_CUSTOMER FROM ${DEPOSITS_DP10_TABLE} 
+         WHERE ID_CUSTOMER IS NOT NULL AND ID_CUSTOMER != '' 
+         ORDER BY ID_CUSTOMER ASC;`
+    );
+
+    return result.rows.map((row) => row[0] as string);
+}
+
+
 
