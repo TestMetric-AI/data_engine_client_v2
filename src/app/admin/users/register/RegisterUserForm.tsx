@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface RegisterUserFormProps {
     onSuccess?: () => void;
+}
+
+interface Role {
+    id: string;
+    name: string;
+    description?: string;
 }
 
 export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
@@ -11,6 +17,25 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [generatedPassword, setGeneratedPassword] = useState("");
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [loadingRoles, setLoadingRoles] = useState(true);
+
+    useEffect(() => {
+        async function fetchRoles() {
+            try {
+                const res = await fetch("/api/admin/roles");
+                if (!res.ok) throw new Error("Failed to fetch roles");
+                const data = await res.json();
+                setRoles(data);
+            } catch (err) {
+                console.error("Error loading roles:", err);
+                // Fallback or just show empty
+            } finally {
+                setLoadingRoles(false);
+            }
+        }
+        fetchRoles();
+    }, []);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -42,12 +67,7 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
             }
             form.reset();
 
-            // Wait a moment for the user to see the success message if needed, or just let them close manually.
-            // But if we want auto-close behavior we could trigger it. 
-            // For now, let's trigger onSuccess but keep the modal open so they can copy the password.
             if (onSuccess) {
-                // We might NOT want to close immediately because the user needs to copy the password.
-                // So we typically just trigger a refresh of the list but keep the modal open.
                 onSuccess();
             }
 
@@ -126,11 +146,18 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
                                 <select
                                     name="role"
                                     id="role"
+                                    required
+                                    defaultValue=""
                                     className="w-full appearance-none rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                 >
-                                    <option value="user">User</option>
-                                    <option value="TESTER">Tester</option>
-                                    <option value="ADMIN">Admin</option>
+                                    <option value="" disabled>Select a role</option>
+                                    {loadingRoles ? (
+                                        <option value="" disabled>Loading roles...</option>
+                                    ) : (
+                                        roles.map(role => (
+                                            <option key={role.id} value={role.name}>{role.name}</option>
+                                        ))
+                                    )}
                                 </select>
                                 <div className="pointer-events-none absolute right-3 top-2.5 text-text-secondary">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
