@@ -670,5 +670,20 @@ export async function getDistinctCustomers(): Promise<string[]> {
     return result.rows.map((row) => row[0] as string);
 }
 
+export async function updateCustomerLegalInfo(
+    idCustomer: string,
+    legalId: string,
+    legalDoc: string
+): Promise<number> {
+    await ensureDepositsTable();
+    const result = await turso.execute({
+        sql: `UPDATE ${DEPOSITS_DP10_TABLE} 
+              SET LEGAL_ID = ?, LEGAL_DOC = ? 
+              WHERE ID_CUSTOMER = ?;`,
+        args: [legalId, legalDoc, idCustomer],
+    });
+    return result.rowsAffected;
+}
+
 
 
