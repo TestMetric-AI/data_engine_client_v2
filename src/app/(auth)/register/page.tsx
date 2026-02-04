@@ -28,13 +28,13 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50">
-            <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-md">
+        <div className="flex min-h-screen items-center justify-center bg-background">
+            <div className="w-full max-w-md space-y-8 rounded-lg bg-card p-8 shadow-md">
                 <div className="text-center">
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">
                         Create an account
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-text-secondary">
                         Enter your details to register
                     </p>
                 </div>
@@ -77,7 +77,7 @@ export default function RegisterPage() {
                     <div className="text-center text-sm">
                         <p>
                             Already have an account?{" "}
-                            <a href="/login" className="font-medium text-slate-900 hover:underline">
+                            <a href="/login" className="font-medium text-text-primary hover:underline">
                                 Sign in
                             </a>
                         </p>

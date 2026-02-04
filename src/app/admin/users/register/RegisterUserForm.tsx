@@ -62,77 +62,77 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                         User Management
                     </p>
-                    <h2 className="mt-1 font-display text-xl font-semibold text-slate-900">
+                    <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">
                         Account Details
                     </h2>
                 </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
                     Single Step
                 </span>
             </div>
 
             <div className="space-y-6">
-                <section className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <section className="rounded-2xl border border-border bg-surface/60 p-4">
                     <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 shadow-sm">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-xs font-semibold text-text-secondary shadow-sm">
                             1
                         </span>
-                        <h3 className="text-sm font-semibold text-slate-800">
+                        <h3 className="text-sm font-semibold text-text-primary">
                             User Information
                         </h3>
                     </div>
 
                     <div className="mt-6 grid gap-6 sm:grid-cols-2">
                         <label className="flex flex-col gap-2 text-xs">
-                            <span className="font-semibold text-slate-600">Full Name</span>
+                            <span className="font-semibold text-text-secondary">Full Name</span>
                             <input
                                 name="name"
                                 type="text"
                                 placeholder="John Doe"
                                 required
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-300 focus:outline-none"
+                                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                             />
                         </label>
                         <label className="flex flex-col gap-2 text-xs">
-                            <span className="font-semibold text-slate-600">Email Address</span>
+                            <span className="font-semibold text-text-secondary">Email Address</span>
                             <input
                                 name="email"
                                 type="email"
                                 placeholder="john@example.com"
                                 required
-                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-300 focus:outline-none"
+                                className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                             />
                         </label>
                     </div>
                 </section>
 
-                <section className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <section className="rounded-2xl border border-border bg-surface/60 p-4">
                     <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-600 shadow-sm">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-card text-xs font-semibold text-text-secondary shadow-sm">
                             2
                         </span>
-                        <h3 className="text-sm font-semibold text-slate-800">
+                        <h3 className="text-sm font-semibold text-text-primary">
                             Access Control
                         </h3>
                     </div>
 
                     <div className="mt-6 grid gap-6 sm:grid-cols-2">
                         <label className="flex flex-col gap-2 text-xs">
-                            <span className="font-semibold text-slate-600">Role</span>
+                            <span className="font-semibold text-text-secondary">Role</span>
                             <div className="relative">
                                 <select
                                     name="role"
                                     id="role"
-                                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-300 focus:outline-none"
+                                    className="w-full appearance-none rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                 >
                                     <option value="user">User</option>
                                     <option value="TESTER">Tester</option>
                                     <option value="ADMIN">Admin</option>
                                 </select>
-                                <div className="pointer-events-none absolute right-3 top-2.5 text-slate-500">
+                                <div className="pointer-events-none absolute right-3 top-2.5 text-text-secondary">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                                     </svg>
@@ -171,7 +171,7 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+                    className="rounded-xl bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
                 >
                     {loading ? "Registering..." : "Register User"}
                 </button>

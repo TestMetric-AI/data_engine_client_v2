@@ -24,19 +24,19 @@ export default function Topbar() {
   }, []);
 
   return (
-    <div className="sticky top-0 z-30 flex flex-col gap-4 border-b border-slate-100/80 bg-white/80 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
-      <div className="relative flex w-full max-w-md items-center gap-3 rounded-2xl bg-slate-100/70 px-4 py-2 text-slate-500">
+    <div className="sticky top-0 z-30 flex flex-col gap-4 border-b border-border bg-card/80 px-6 py-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <div className="relative flex w-full max-w-md items-center gap-3 rounded-2xl bg-surface/70 px-4 py-2 text-text-secondary">
         <SearchIcon className="h-5 w-5" />
         <input
           aria-label="Search"
-          className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+          className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
           placeholder="Search datasets, pipelines..."
         />
       </div>
       <div className="flex items-center gap-4">
         <button
           type="button"
-          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500"
+          className="relative flex h-10 w-10 items-center justify-center rounded-full bg-surface text-text-secondary"
         >
           <BellIcon className="h-5 w-5" />
           <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-emerald-400" />
@@ -45,9 +45,9 @@ export default function Topbar() {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 rounded-full bg-slate-50 pl-2 pr-4 py-1.5 ring-1 ring-slate-200 transition hover:bg-slate-100 hover:ring-slate-300"
+            className="flex items-center gap-3 rounded-full bg-surface pl-2 pr-4 py-1.5 ring-1 ring-border transition hover:bg-surface hover:ring-border"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-medium text-white ring-2 ring-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-white ring-2 ring-white">
               {session?.user?.name
                 ? session.user.name
                   .split(" ")
@@ -58,18 +58,18 @@ export default function Topbar() {
                 : "U"}
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-text-primary">
                 {session?.user?.name || "User"}
               </p>
             </div>
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-white py-1 shadow-xl ring-1 ring-black/5 focus:outline-none z-50">
+            <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-card py-1 shadow-xl ring-1 ring-black/5 focus:outline-none z-50">
               <div className="p-1">
                 <Link
                   href="/dashboard/profile"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition hover:bg-surface hover:text-text-primary"
                   onClick={() => setIsDropdownOpen(false)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
@@ -77,10 +77,10 @@ export default function Topbar() {
                   </svg>
                   Profile
                 </Link>
-                <div className="my-1 h-px bg-slate-100" />
+                <div className="my-1 h-px bg-surface" />
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-red-50 hover:text-red-600"
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary transition hover:bg-red-50 hover:text-red-600"
                 >
                   <LogOutIcon className="h-4 w-4" />
                   Sign out

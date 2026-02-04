@@ -159,12 +159,13 @@ export default function DepositsQueryPage() {
   return (
     <div className="mx-auto max-w-7xl">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+
         <div>
-          <p className="text-sm font-semibold text-slate-500">Datasets</p>
-          <h1 className="mt-2 font-display text-3xl font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-text-secondary">Datasets</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold text-text-primary">
             Deposits Query
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-text-secondary">
             Consulta puntual sobre la tabla deposits_dp10 usando filtros
             exactos o rangos de fechas.
           </p>
@@ -174,18 +175,18 @@ export default function DepositsQueryPage() {
       <div className="mt-6 grid gap-6">
         <form
           onSubmit={handleSubmit}
-          className="w-full min-w-0 rounded-2xl border border-slate-100/80 bg-white/90 p-6 shadow-sm shadow-slate-200/40"
+          className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
                 Consulta
               </p>
-              <h2 className="mt-1 font-display text-xl font-semibold text-slate-900">
+              <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">
                 Parametros de busqueda
               </h2>
             </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+            <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
               Single result
             </span>
           </div>
@@ -193,12 +194,12 @@ export default function DepositsQueryPage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filterFields.map(({ key, label, type }) => (
               <label key={key} className="flex flex-col gap-2 text-xs">
-                <span className="font-semibold text-slate-600">{label}</span>
+                <span className="font-semibold text-text-secondary">{label}</span>
                 <input
                   type={type ?? "text"}
                   value={form[key]}
                   onChange={(event) => handleChange(key, event.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-300 focus:outline-none"
+                  className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                 />
               </label>
             ))}
@@ -216,7 +217,7 @@ export default function DepositsQueryPage() {
             <button
               type="submit"
               disabled={status === "loading"}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
             >
               {status === "loading" ? "Consultando..." : "Consultar"}
             </button>
@@ -227,25 +228,25 @@ export default function DepositsQueryPage() {
                 setError(null);
                 setResult(null);
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:border-slate-300"
+              className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-text-secondary hover:border-primary"
             >
               Limpiar filtros
             </button>
           </div>
         </form>
 
-        <section className="w-full min-w-0 rounded-2xl border border-slate-100/80 bg-white/90 p-6 shadow-sm shadow-slate-200/40">
+        <section className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold text-slate-900">
+            <h2 className="font-display text-lg font-semibold text-text-primary">
               Resultado
             </h2>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+            <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
               deposits/query
             </span>
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full border-collapse text-left text-sm">
-              <thead className="border-b border-slate-100 text-xs uppercase text-slate-400">
+              <thead className="border-b border-border text-xs uppercase text-text-secondary">
                 <tr>
                   {resultColumns.map((key) => (
                     <th key={key} className="whitespace-nowrap px-3 py-3">
@@ -259,10 +260,10 @@ export default function DepositsQueryPage() {
                   <tr>
                     <td
                       colSpan={Math.max(resultColumns.length, 1)}
-                      className="px-3 py-10 text-center text-sm text-slate-500"
+                      className="px-3 py-10 text-center text-sm text-text-secondary"
                     >
                       <div className="flex items-center justify-center gap-3">
-                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-text-primary" />
                         Consultando...
                       </div>
                     </td>
@@ -277,9 +278,9 @@ export default function DepositsQueryPage() {
                     </td>
                   </tr>
                 ) : result?.data ? (
-                  <tr className="border-b border-slate-50 text-slate-600">
+                  <tr className="border-b border-border text-text-secondary">
                     {resultColumns.map((key) => (
-                      <td key={key} className="whitespace-nowrap px-3 py-3 text-slate-600">
+                      <td key={key} className="whitespace-nowrap px-3 py-3 text-text-secondary">
                         {result.data[key] ?? "-"}
                       </td>
                     ))}
@@ -288,7 +289,7 @@ export default function DepositsQueryPage() {
                   <tr>
                     <td
                       colSpan={Math.max(resultColumns.length, 1)}
-                      className="px-3 py-10 text-center text-sm text-slate-500"
+                      className="px-3 py-10 text-center text-sm text-text-secondary"
                     >
                       Ingresa parametros y ejecuta la consulta para ver
                       resultados.

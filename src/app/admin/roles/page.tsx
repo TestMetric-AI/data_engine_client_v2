@@ -4,14 +4,15 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
-import UsersTable from "./UsersTable";
 import Modal from "@/components/ui/Modal";
-import RegisterUserForm from "./RegisterUserForm";
+import RolesTable from "./RolesTable";
+import RoleForm from "./RoleForm";
 
-export default function RegisterUserPage() {
+export default function RolesPage() {
     const { data: session, status } = useSession();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [editingRole, setEditingRole] = useState<any>(null);
 
     if (status === "loading") {
         return <div className="p-8">Loading...</div>;
@@ -19,13 +20,24 @@ export default function RegisterUserPage() {
 
     if (!session?.user?.roles?.includes("ADMIN")) {
         if (status === "authenticated") {
-            return <div className="p-8 text-red-600">Access Denied: You do not have permission to view this page.</div>;
+            return <div className="p-8 text-rose-600">Access Denied: You do not have permission to view this page.</div>;
         }
         return <div className="p-8">Please log in.</div>;
     }
 
-    const handleUserRegistered = () => {
+    const handleSuccess = () => {
         setRefreshTrigger(prev => prev + 1);
+        handleCloseModal();
+    };
+
+    const handleEdit = (role: any) => {
+        setEditingRole(role);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingRole(null);
     };
 
     return (
@@ -40,10 +52,10 @@ export default function RegisterUserPage() {
                                 <div>
                                     <p className="text-sm font-semibold text-text-secondary">Admin</p>
                                     <h1 className="mt-2 font-display text-3xl font-semibold text-text-primary">
-                                        User Management
+                                        Role Management
                                     </h1>
                                     <p className="mt-2 text-sm text-text-secondary">
-                                        Manage system access and roles.
+                                        Manage user roles and permissions.
                                     </p>
                                 </div>
                                 <div>
@@ -54,13 +66,16 @@ export default function RegisterUserPage() {
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                         </svg>
-                                        Add New User
+                                        Add New Role
                                     </button>
                                 </div>
                             </div>
 
                             <div className="mt-8">
-                                <UsersTable refreshTrigger={refreshTrigger} />
+                                <RolesTable
+                                    refreshTrigger={refreshTrigger}
+                                    onEdit={handleEdit}
+                                />
                             </div>
                         </div>
                     </main>
@@ -69,10 +84,14 @@ export default function RegisterUserPage() {
 
             <Modal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Register New User"
+                onClose={handleCloseModal}
+                title={editingRole ? "Edit Role" : "Create New Role"}
             >
-                <RegisterUserForm onSuccess={handleUserRegistered} />
+                <RoleForm
+                    initialData={editingRole}
+                    onSuccess={handleSuccess}
+                    onCancel={handleCloseModal}
+                />
             </Modal>
         </div>
     );

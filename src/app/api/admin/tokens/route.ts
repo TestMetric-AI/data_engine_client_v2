@@ -1,33 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import prisma from "@/lib/db";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
 
 const SECRET = process.env.NEXTAUTH_SECRET || "fallback_secret";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
+        const body = await req.json();
+        const { email, password, name, expiresIn } = body;
 
-        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        if (!email || !password || !name) {
+            return NextResponse.json({ error: "Missing required fields: email, password, name" }, { status: 400 });
         }
 
-        const body = await req.json();
-        const { name, expiresIn } = body;
-        // name is for bookkeeping if we were using DB, here just part of payload maybe?
-        // expiresIn could be 1y, 30d, etc.
+        // 1. Find User
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: { roles: true }
+        });
 
-        // Create JWT
+        if (!user) {
+            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+        }
+
+        // 2. Validate Password
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+        }
+
+        // 3. Check for SERVICE role
+        const hasServiceRole = user.roles.some(r => r.name === "SERVICE");
+        if (!hasServiceRole) {
+            return NextResponse.json({ error: "User must have SERVICE role to generate tokens" }, { status: 403 });
+        }
+
+        // 4. Create JWT
         const payload = {
-            role: "ADMIN",
+            id: user.id,
+            email: user.email,
+            role: "SERVICE",
             type: "api_token",
-            issuedBy: session.user.email,
-            name: name || "Generic Token"
+            name: name
         };
 
         const token = jwt.sign(payload, SECRET, {
-            expiresIn: expiresIn || "365d" // Default 1 year
+            expiresIn: expiresIn || "365d"
         });
 
         return NextResponse.json({

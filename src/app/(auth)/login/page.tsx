@@ -40,13 +40,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-50">
-            <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-md">
+        <div className="flex min-h-screen items-center justify-center bg-background">
+            <div className="w-full max-w-md space-y-8 rounded-lg bg-card p-8 shadow-md">
                 <div className="text-center">
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+                    <h2 className="text-3xl font-bold tracking-tight text-text-primary">
                         Sign in
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-text-secondary">
                         Use your email and password to sign in
                     </p>
                 </div>

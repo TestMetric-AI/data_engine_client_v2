@@ -123,17 +123,17 @@ export default function DepositsDatasetPage() {
     <div className="mx-auto max-w-7xl">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-500">Datasets</p>
-          <h1 className="mt-2 font-display text-3xl font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-text-secondary">Datasets</p>
+          <h1 className="mt-2 font-display text-3xl font-semibold text-text-primary">
             Deposits DP10
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-text-secondary">
             Listado paginado de la tabla deposits_dp10 en DuckDB.
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-400">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-secondary">
               <path
                 d="M11 4a7 7 0 105.2 11.6l3.1 3.1 1.4-1.4-3.1-3.1A7 7 0 0011 4zm0 2a5 5 0 110 10 5 5 0 010-10z"
                 fill="currentColor"
@@ -143,18 +143,18 @@ export default function DepositsDatasetPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by id, date, amount..."
-              className="w-full text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+              className="w-full text-sm text-text-primary placeholder:text-text-secondary focus:outline-none bg-transparent"
               aria-label="Search deposits"
             />
           </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2 text-xs font-semibold text-text-secondary shadow-sm">
             <span>Exoneracion</span>
             <select
               value={exoneratedFilter}
               onChange={(event) =>
                 setExoneratedFilter(event.target.value as "ALL" | "SI" | "NO")
               }
-              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none"
+              className="bg-transparent text-xs font-semibold text-text-primary focus:outline-none"
             >
               <option value="ALL">All</option>
               <option value="SI">SI</option>
@@ -164,13 +164,13 @@ export default function DepositsDatasetPage() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-100/80 bg-white/90 p-6 shadow-sm shadow-slate-200/40">
+      <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-slate-500">
+          <div className="text-sm text-text-secondary">
             Mostrando {filteredRows.length} de {pagination.total} registros.
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
               <span>Page size</span>
               <select
                 value={pagination.pageSize}
@@ -181,7 +181,7 @@ export default function DepositsDatasetPage() {
                     pageSize: Number(event.target.value),
                   }))
                 }
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
               >
                 {pageSizes.map((size) => (
                   <option key={size} value={size}>
@@ -190,7 +190,7 @@ export default function DepositsDatasetPage() {
                 ))}
               </select>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
               <span>
                 Page {pagination.page} of {pagination.totalPages}
               </span>
@@ -200,7 +200,7 @@ export default function DepositsDatasetPage() {
                 onClick={() =>
                   setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
                 }
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
               >
                 Prev
               </button>
@@ -213,8 +213,8 @@ export default function DepositsDatasetPage() {
                       setPagination((prev) => ({ ...prev, page }))
                     }
                     className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                      ? "bg-slate-900 text-white"
-                      : "border border-slate-200 bg-white text-slate-600"
+                      ? "bg-primary text-white"
+                      : "border border-border bg-card text-text-secondary"
                       }`}
                   >
                     {page}
@@ -227,7 +227,7 @@ export default function DepositsDatasetPage() {
                 onClick={() =>
                   setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
                 }
-                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
               >
                 Next
               </button>
@@ -237,7 +237,7 @@ export default function DepositsDatasetPage() {
 
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full border-collapse text-left text-sm">
-            <thead className="border-b border-slate-100 text-xs uppercase text-slate-400">
+            <thead className="border-b border-border text-xs uppercase text-text-secondary">
               <tr>
                 {columns.map((column) => (
                   <th key={column} className="whitespace-nowrap px-3 py-3">
@@ -251,7 +251,7 @@ export default function DepositsDatasetPage() {
                 <tr>
                   <td
                     colSpan={Math.max(columns.length, 1)}
-                    className="px-3 py-10 text-center text-sm text-slate-500"
+                    className="px-3 py-10 text-center text-sm text-text-secondary"
                   >
                     Cargando registros...
                   </td>
@@ -269,7 +269,7 @@ export default function DepositsDatasetPage() {
                 <tr>
                   <td
                     colSpan={Math.max(columns.length, 1)}
-                    className="px-3 py-10 text-center text-sm text-slate-500"
+                    className="px-3 py-10 text-center text-sm text-text-secondary"
                   >
                     Sin resultados con los filtros actuales.
                   </td>
@@ -278,12 +278,12 @@ export default function DepositsDatasetPage() {
                 filteredRows.map((row, index) => (
                   <tr
                     key={`${row.ID_CUSTOMER ?? "row"}-${index}`}
-                    className="border-b border-slate-50 text-slate-600"
+                    className="border-b border-border text-text-secondary"
                   >
                     {columns.map((column) => (
                       <td
                         key={`${column}-${index}`}
-                        className="whitespace-nowrap px-3 py-3 text-slate-600"
+                        className="whitespace-nowrap px-3 py-3 text-text-secondary"
                       >
                         {row[column as keyof DepositRow] ?? "-"}
                       </td>
@@ -295,7 +295,7 @@ export default function DepositsDatasetPage() {
           </table>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
           <span>
             Page {pagination.page} of {pagination.totalPages} (total{" "}
             {pagination.total})
@@ -307,7 +307,7 @@ export default function DepositsDatasetPage() {
               onClick={() =>
                 setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
               }
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+              className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
             >
               Prev
             </button>
@@ -317,8 +317,8 @@ export default function DepositsDatasetPage() {
                 type="button"
                 onClick={() => setPagination((prev) => ({ ...prev, page }))}
                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                  ? "bg-slate-900 text-white"
-                  : "border border-slate-200 bg-white text-slate-600"
+                  ? "bg-primary text-white"
+                  : "border border-border bg-card text-text-secondary"
                   }`}
               >
                 {page}
@@ -330,7 +330,7 @@ export default function DepositsDatasetPage() {
               onClick={() =>
                 setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
               }
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 disabled:opacity-50"
+              className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
             >
               Next
             </button>

@@ -17,16 +17,16 @@ export default function TrendCard({ data }: TrendCardProps) {
     <Card className="col-span-2 animate-[fade-up_0.6s_ease-out]">
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-display text-lg font-semibold text-slate-900">
+          <p className="font-display text-lg font-semibold text-text-primary">
             Ingestion vs. Delivery Trend
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-text-secondary">
             Incoming files compared to API deliveries
           </p>
         </div>
         <button
           type="button"
-          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-text-secondary"
         >
           Show by months
         </button>
@@ -50,12 +50,12 @@ export default function TrendCard({ data }: TrendCardProps) {
                       style={{ height: `${inboundHeight}%` }}
                     />
                   </div>
-                  <span className="text-xs text-slate-400">{point.month}</span>
+                  <span className="text-xs text-text-secondary">{point.month}</span>
                 </div>
               );
             })}
           </div>
-          <div className="mt-4 flex items-center gap-6 text-xs text-slate-500">
+          <div className="mt-4 flex items-center gap-6 text-xs text-text-secondary">
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-violet-500" />
               Inbound
@@ -67,21 +67,21 @@ export default function TrendCard({ data }: TrendCardProps) {
           </div>
         </div>
 
-        <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl bg-slate-50 p-4">
+        <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl bg-surface p-4">
           <div
             className="relative flex h-32 w-32 items-center justify-center rounded-full"
             style={{
               background: `conic-gradient(#6d28d9 0 ${donutValue}%, #22c55e ${donutValue}% 100%)`,
             }}
           >
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white text-center text-sm font-semibold text-slate-700">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-card text-center text-sm font-semibold text-text-primary">
               {donutValue}%
             </div>
           </div>
-          <p className="text-sm font-semibold text-slate-700">
+          <p className="text-sm font-semibold text-text-primary">
             Delivery SLA
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-text-secondary">
             Requests fulfilled within 30 minutes
           </p>
         </div>
