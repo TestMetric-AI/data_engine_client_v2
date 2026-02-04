@@ -20,6 +20,7 @@ model User {
   password  String
   roles     Role[]
   createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
   updatedAt DateTime @updatedAt
 }
 
@@ -30,6 +31,7 @@ model Role {
   users       User[]
   permissions Permission[]
   createdAt   DateTime     @default(now())
+  isActive    Boolean      @default(true)
   updatedAt   DateTime     @updatedAt
 }
 
@@ -39,5 +41,6 @@ model Permission {
   description String?
   roles       Role[]
   createdAt   DateTime @default(now())
+  isActive    Boolean  @default(true)
   updatedAt   DateTime @updatedAt
 }

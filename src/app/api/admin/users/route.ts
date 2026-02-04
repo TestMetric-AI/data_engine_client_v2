@@ -7,10 +7,18 @@ import { z } from "zod";
 
 const registerSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(6),
     name: z.string().min(2),
     role: z.string().default("user"),
 });
+
+function generatePassword(length = 12) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let retVal = "";
+    for (let i = 0, n = charset.length; i < length; ++i) {
+        retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    return retVal;
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -29,7 +37,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: result.error.message }, { status: 400 });
         }
 
-        const { email, password, name, role } = result.data;
+        const { email, name, role } = result.data;
 
         // 3. Check if user exists
         const existingUser = await prisma.user.findUnique({
@@ -40,16 +48,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User already exists" }, { status: 409 });
         }
 
-        // 4. Create user
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // Ensure role exists or create it (optional safety, better to seed)
-        // For now assuming roles exist as per schema, but we can verify.
-        // Actually, Prisma create with connectOrCreate is safer.
-
-        // We need to fetch the role first to be sure or use connectOrCreate
-        // Let's assume seeded roles for simplicity and robust design usually relies on seeds.
-        // However, for this task I will use connectOrCreate to be safe.
+        // 4. Create user with generated password
+        const generatedPassword = generatePassword();
+        const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
         const user = await prisma.user.create({
             data: {
@@ -66,7 +67,11 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json(
-            { message: "User created successfully", userId: user.id },
+            {
+                message: "User created successfully",
+                userId: user.id,
+                generatedPassword: generatedPassword
+            },
             { status: 201 }
         );
     } catch (error) {
