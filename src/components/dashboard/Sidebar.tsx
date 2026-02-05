@@ -53,6 +53,7 @@ const navSections = [
     category: "Management",
     items: [
       { label: "Resources", href: "/management/resources", icon: UserGroupIcon },
+      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon },
       { label: "Projects", href: "/management/projects", icon: FolderIcon },
       { label: "Access", href: "/access", icon: ShieldIcon },
       { label: "Team", href: "/team", icon: UsersIcon },

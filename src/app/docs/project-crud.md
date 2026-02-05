@@ -57,3 +57,27 @@ This module implements a CRUD system for the `Resource` entity, located at `/man
     - **Role**: Select from available resource roles.
     - **Allocation**: Percentage slider (0-100).
 - **Modal**: Used for Form (Create/Edit) and Confirmation (Status Toggle).
+
+---
+
+## ResourceRole CRUD Documentation
+
+### Overview
+This module implements a CRUD system for `ResourceRole`, located at `/management/resource-roles`. These roles define the functional capacity of a resource (e.g., Developer, Analyst).
+
+### Database Service (`src/lib/services/resource-roles.ts`)
+- `getResourceRoles`: Fetches paginated roles.
+- `createResourceRole`: Creates a new role. Name must be unique.
+- `updateResourceRole`: Updates role details.
+- `toggleResourceRoleStatus`: Toggles the `isActive` status of a role.
+
+### Server Actions
+- Wraps service functions for UI consumption. Includes error handling for unique constraint violations (duplicate names).
+
+### UI Components
+- **Table**: Lists roles and the count of resources assigned to each.
+    - Columns: Name, Description, Resource Count, Status, Actions.
+    - Actions: Edit, Toggle Status (Power Icon) with Confirmation Modal.
+- **Form**:
+    - **Name**: Unique name for the role.
+    - **Description**: Optional description.

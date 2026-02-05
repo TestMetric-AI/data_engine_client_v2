@@ -83,14 +83,15 @@ model Project {
 }
 
 model ResourceRole {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @unique @db.Text
-  description String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-
-  resources Resource[]
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique @db.Text
+  description String?    @db.Text
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  isActive    Boolean    @default(true)
+  resources   Resource[]
 
   @@index([createdAt(sort: Desc)])
+  @@index([isActive])
   @@map("resource_roles")
 }
 
