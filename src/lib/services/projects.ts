@@ -69,3 +69,9 @@ export async function toggleProjectStatus(id: string, isActive: boolean) {
         data: { isActive },
     });
 }
+
+export async function deleteProject(id: string) {
+    return prisma.project.delete({
+        where: { id },
+    });
+}
