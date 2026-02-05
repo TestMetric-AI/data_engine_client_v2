@@ -177,14 +177,14 @@ export default function Sidebar() {
                 {!isCollapsed && <span>Register User</span>}
               </Link>
               <Link
-                href="/admin/roles"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/roles"
+                href="/management/roles"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/management/roles"
                   ? "bg-surface text-text-primary"
                   : "text-text-secondary"
                   } ${isCollapsed ? "justify-center px-2" : ""}`}
               >
                 <ShieldIcon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>Roles</span>}
+                {!isCollapsed && <span>System Roles</span>}
               </Link>
               <Link
                 href="/admin/permissions"

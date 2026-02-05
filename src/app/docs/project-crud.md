@@ -95,6 +95,7 @@ Enhances the Resource Management system with tasks and notes for better activity
 - **Resource Tasks**:
     - **UI**: Global view at `/management/tasks` and per-resource view in Detail Page.
     - **Features**: Filterable list, Status tracking with History, Priority.
+*   [Sistema de Permisos](/docs/permissions.md) - Documentación del control de acceso dinámico.
 - **Resource Notes**:
     - **UI**: Integrated in Resource Detail view.
     - **Features**: Activity stream for comments and updates.

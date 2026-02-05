@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Sidebar from "@/components/dashboard/Sidebar";
-import Topbar from "@/components/dashboard/Topbar";
 import ResourcesTable, { Resource } from "./ResourcesTable";
 import ResourceForm from "./ResourceForm";
 import Modal from "@/components/ui/Modal";
@@ -30,37 +28,29 @@ export default function ResourcesPage() {
     };
 
     return (
-        <div className="flex bg-surface min-h-screen">
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-h-screen lg:max-h-screen lg:overflow-hidden">
-                <Topbar />
-                <main className="flex-1 p-6 overflow-y-auto">
-                    <div className="mx-auto max-w-7xl flex flex-col gap-6">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h1 className="font-display text-2xl font-bold text-text-primary">
-                                    Resource Management
-                                </h1>
-                                <p className="text-text-secondary mt-1">
-                                    Manage team resources, roles, and allocations.
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setIsModalOpen(true)}
-                                className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            >
-                                <UserPlusIcon className="h-5 w-5" />
-                                Add New Resource
-                            </button>
-                        </div>
-
-                        <ResourcesTable
-                            refreshTrigger={refreshTrigger}
-                            onEdit={handleEdit}
-                        />
-                    </div>
-                </main>
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="font-display text-2xl font-bold text-text-primary">
+                        Resource Management
+                    </h1>
+                    <p className="text-text-secondary mt-1">
+                        Manage team resources, roles, and allocations.
+                    </p>
+                </div>
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                    <UserPlusIcon className="h-5 w-5" />
+                    Add New Resource
+                </button>
             </div>
+
+            <ResourcesTable
+                refreshTrigger={refreshTrigger}
+                onEdit={handleEdit}
+            />
 
             <Modal
                 isOpen={isModalOpen}
