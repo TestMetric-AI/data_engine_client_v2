@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "./TaskForm";
@@ -21,7 +21,8 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 type TaskWithRelations = ResourceTask & {
     status: ResourceTaskStatus;
     project: { name: string; id: string } | null;
-    resource: { fullName: string; id: string } | null; // Resource might be null if deleted? or relation is mandatory? Schema says mandatory.
+    resource: { fullName: string; id: string } | null;
+    approvalStatus?: "PENDING" | "APPROVED" | "REJECTED"; // Optional if types not yet generated
 };
 
 interface TasksTableProps {
@@ -30,9 +31,10 @@ interface TasksTableProps {
     statuses: ResourceTaskStatus[];
     projects: Project[];
     resources: Resource[]; // For filter dropdown
+    canApprove?: boolean;
 }
 
-export default function TasksTable({ tasks, total, statuses, projects, resources }: TasksTableProps) {
+export default function TasksTable({ tasks, total, statuses, projects, resources, canApprove = false }: TasksTableProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -84,6 +86,26 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
         } catch (error) {
             console.error(error);
             alert("Failed to delete task");
+        }
+    }
+
+    async function handleApprove(id: string) {
+        try {
+            const { approveTaskAction } = await import("./taskActions");
+            await approveTaskAction(id);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to approve task");
+        }
+    }
+
+    async function handleReject(id: string) {
+        try {
+            const { rejectTaskAction } = await import("./taskActions");
+            await rejectTaskAction(id);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to reject task");
         }
     }
 
@@ -167,6 +189,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Title</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Assigned To</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Status</th>
+                            <th className="whitespace-nowrap px-4 py-3 font-medium">Approval</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Project</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Priority</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Due Date</th>
@@ -191,6 +214,14 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                         {task.status.name}
                                     </span>
                                 </td>
+                                <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize
+                                        ${task.approvalStatus === 'APPROVED' ? 'bg-indigo-100 text-indigo-700' :
+                                            task.approvalStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-700'}
+                                     `}>
+                                        {task.approvalStatus || 'PENDING'}
+                                    </span>
+                                </td>
                                 <td className="px-4 py-3 text-text-secondary">
                                     {task.project?.name || "-"}
                                 </td>
@@ -206,28 +237,48 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                     {task.dueDate ? format(new Date(task.dueDate), "MMM d, yyyy") : "-"}
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 transition group-hover:opacity-100">
-                                        <button
-                                            onClick={() => setEditingTask(task)}
-                                            className="rounded-lg p-1.5 text-text-secondary hover:bg-surface hover:text-primary"
-                                            title="Edit Task"
-                                        >
-                                            <PencilSquareIcon className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => initiateDelete(task)}
-                                            className="rounded-lg p-1.5 text-text-secondary hover:bg-rose-50 hover:text-rose-600"
-                                            title="Delete Task"
-                                        >
-                                            <TrashIcon className="h-4 w-4" />
-                                        </button>
+                                    <div className="flex justify-end gap-2">
+                                        {canApprove && task.approvalStatus === 'PENDING' && (
+                                            <>
+                                                <button
+                                                    onClick={() => handleApprove(task.id)}
+                                                    className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
+                                                    title="Approve Task"
+                                                >
+                                                    <CheckIcon className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleReject(task.id)}
+                                                    className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
+                                                    title="Reject Task"
+                                                >
+                                                    <XMarkIcon className="h-4 w-4" />
+                                                </button>
+                                            </>
+                                        )}
+                                        <div className="flex opacity-0 transition group-hover:opacity-100">
+                                            <button
+                                                onClick={() => setEditingTask(task)}
+                                                className="rounded-lg p-1.5 text-text-secondary hover:bg-surface hover:text-primary"
+                                                title="Edit Task"
+                                            >
+                                                <PencilSquareIcon className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => initiateDelete(task)}
+                                                className="rounded-lg p-1.5 text-text-secondary hover:bg-rose-50 hover:text-rose-600"
+                                                title="Delete Task"
+                                            >
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
                         ))}
                         {tasks.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="px-4 py-10 text-center text-text-secondary">
+                                <td colSpan={8} className="px-4 py-10 text-center text-text-secondary">
                                     No tasks found.
                                 </td>
                             </tr>

@@ -18,13 +18,15 @@ interface TaskFormProps {
     resources: Resource[];
     onSuccess: () => void;
     onCancel: () => void;
+    currentResourceId?: string | null;
+    currentUserRole?: string | null;
 }
 
-export default function TaskForm({ taskToEdit, statuses, projects, resources, onSuccess, onCancel }: TaskFormProps) {
+export default function TaskForm({ taskToEdit, statuses, projects, resources, onSuccess, onCancel, currentResourceId, currentUserRole }: TaskFormProps) {
     const [formData, setFormData] = useState({
         title: "",
         summary: "",
-        resourceId: "",
+        resourceId: taskToEdit ? taskToEdit.resourceId : (currentResourceId || ""),
         projectId: "",
         statusId: "",
         priority: "medium",
@@ -140,7 +142,8 @@ export default function TaskForm({ taskToEdit, statuses, projects, resources, on
                         required
                         value={formData.resourceId}
                         onChange={(e) => setFormData({ ...formData, resourceId: e.target.value })}
-                        className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-primary focus:border-primary focus:outline-none"
+                        className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-primary focus:border-primary focus:outline-none disabled:opacity-50"
+                        disabled={currentUserRole === "TESTER"}
                     >
                         <option value="">Select Resource</option>
                         {resources.map((r: any) => (

@@ -17,9 +17,12 @@ interface TasksClientPageProps {
     statuses: ResourceTaskStatus[];
     projects: Project[];
     resources: Resource[];
+    canApprove: boolean;
+    currentResourceId?: string | null;
+    currentUserRole?: string | null;
 }
 
-export default function TasksClientPage({ tasks, total, statuses, projects, resources }: TasksClientPageProps) {
+export default function TasksClientPage({ tasks, total, statuses, projects, resources, canApprove, currentResourceId, currentUserRole }: TasksClientPageProps) {
     const [activeTab, setActiveTab] = useState<"tasks" | "statuses">("tasks");
 
     // Create Task Modal State
@@ -79,6 +82,8 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                 </nav>
             </div>
 
+
+
             {/* Content */}
             {activeTab === "tasks" ? (
                 <>
@@ -88,6 +93,7 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                         statuses={statuses}
                         projects={projects}
                         resources={resources}
+                        canApprove={canApprove}
                     />
 
                     <Modal
@@ -99,6 +105,8 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                             statuses={statuses}
                             projects={projects}
                             resources={resources}
+                            currentResourceId={currentResourceId}
+                            currentUserRole={currentUserRole}
                             onSuccess={() => setIsCreateModalOpen(false)}
                             onCancel={() => setIsCreateModalOpen(false)}
                         />
