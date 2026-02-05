@@ -2,7 +2,7 @@ import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 
 export type ResourceTaskStatusWhereInput = Prisma.ResourceTaskStatusWhereInput;
-export type ResourceTaskStatusCreateInput = Prisma.ResourceTaskStatusCreateInput;
+export type ResourceTaskStatusCreateInput = Omit<Prisma.ResourceTaskStatusCreateInput, 'orderIndex'> & { orderIndex?: number };
 export type ResourceTaskStatusUpdateInput = Prisma.ResourceTaskStatusUpdateInput;
 
 export type GetResourceTaskStatusesParams = {
@@ -51,7 +51,7 @@ export async function createResourceTaskStatus(data: ResourceTaskStatusCreateInp
         }
 
         return tx.resourceTaskStatus.create({
-            data,
+            data: data as Prisma.ResourceTaskStatusCreateInput,
         });
     });
 }

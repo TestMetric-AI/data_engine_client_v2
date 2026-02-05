@@ -20,7 +20,19 @@ import {
   UserGroupIcon,
 } from "./icons";
 
-const navSections = [
+interface NavItem {
+  label: string;
+  icon: any;
+  href?: string;
+  subItems?: { label: string; href: string }[];
+}
+
+interface NavSection {
+  category: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
     category: "Overview",
     items: [
@@ -103,7 +115,7 @@ export default function Sidebar() {
             <div className="flex flex-col gap-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.href ? pathname === item.href : false;
+                const isActive = 'href' in item ? pathname === item.href : false;
 
                 // Handle items with subitems (like Datasets)
                 if (item.subItems) {
