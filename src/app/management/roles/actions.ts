@@ -20,7 +20,7 @@ export async function createRoleAction(formData: FormData) {
 
 export async function updateRoleAction(
     id: string,
-    data: { name?: string; description?: string },
+    data: { name?: string; description?: string; isActive?: boolean },
     permissionIds?: string[]
 ) {
     await requirePermission("MANAGE_USERS");

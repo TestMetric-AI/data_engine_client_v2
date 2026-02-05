@@ -20,6 +20,7 @@ export default function RoleForm({
 }: RoleFormProps) {
     const [name, setName] = useState(roleToEdit?.name || "");
     const [description, setDescription] = useState(roleToEdit?.description || "");
+    const [isActive, setIsActive] = useState(roleToEdit?.isActive ?? true);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
         roleToEdit?.permissions.map((p) => p.id) || []
     );
@@ -33,7 +34,7 @@ export default function RoleForm({
             if (roleToEdit) {
                 await updateRoleAction(
                     roleToEdit.id,
-                    { name, description },
+                    { name, description, isActive },
                     selectedPermissions
                 );
             } else {
@@ -91,6 +92,23 @@ export default function RoleForm({
                         className="mt-1 block w-full rounded-md border border-border bg-surface px-3 py-2 text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
                     />
                 </div>
+
+                {roleToEdit && (
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center h-5">
+                            <input
+                                id="active-role"
+                                type="checkbox"
+                                checked={isActive}
+                                onChange={(e) => setIsActive(e.target.checked)}
+                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                            />
+                        </div>
+                        <label htmlFor="active-role" className="text-sm font-medium text-text-primary select-none">
+                            Role is Active
+                        </label>
+                    </div>
+                )}
 
                 {roleToEdit && (
                     <div>

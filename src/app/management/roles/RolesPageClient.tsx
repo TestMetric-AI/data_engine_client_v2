@@ -56,15 +56,22 @@ export default function RolesPageClient({ roles, permissions }: RolesPageClientP
                 {roles.map((role) => (
                     <div
                         key={role.id}
-                        className="group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:shadow-md"
+                        className={`group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:shadow-md ${!role.isActive ? "opacity-60 grayscale-[50%]" : ""}`}
                     >
                         <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${role.isActive ? "bg-primary/10 text-primary" : "bg-gray-100 text-gray-400"}`}>
                                     <ShieldCheckIcon className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-text-primary">{role.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-text-primary">{role.name}</h3>
+                                        {!role.isActive && (
+                                            <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                                                Inactive
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-xs text-text-secondary">{role._count.users} users</p>
                                 </div>
                             </div>

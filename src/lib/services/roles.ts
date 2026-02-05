@@ -31,8 +31,8 @@ export async function createRole(data: Prisma.RoleCreateInput) {
 
 export async function updateRole(
     id: string,
-    data: Prisma.RoleUpdateInput,
-    permissionIds?: string[] // Optional list of permission IDs to set
+    data: Prisma.RoleUpdateInput, // This already includes isActive? Yes, Prisma types are generated.
+    permissionIds?: string[]
 ) {
     const updateData: Prisma.RoleUpdateInput = { ...data };
 
