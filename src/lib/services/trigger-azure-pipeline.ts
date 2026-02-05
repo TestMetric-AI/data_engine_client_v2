@@ -27,13 +27,18 @@ export async function triggerAzurePipeline() {
         const response = await axios.post(ENDPOINT, PAYLOAD, {
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Basic ${Buffer.from(`:${process.env.AZURE_PERSONAL_ACCESS_TOKEN}`).toString('base64')}`,
+                "Authorization": `Basic ${Buffer.from(`:${process.env.AZURE_PATH}`).toString('base64')}`,
             },
         });
         console.log("Azure Pipeline Triggered Successfully");
         console.log(response.data);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error Triggering Azure Pipeline");
-        console.error(error);
+        if (error.response) {
+            console.error("Status:", error.response.status);
+            console.error("Data:", JSON.stringify(error.response.data, null, 2));
+        } else {
+            console.error(error.message);
+        }
     }
 }
