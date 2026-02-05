@@ -4,6 +4,9 @@ import { useState } from "react";
 import TasksTable from "./TasksTable";
 import TaskStatusesView from "./TaskStatusesView";
 import { ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
+import { PlusIcon } from "@heroicons/react/24/outline";
+import Modal from "@/components/ui/Modal";
+import TaskForm from "./TaskForm";
 // import { ResourceTask } from "@/generated/prisma/client"; // Use the type from table?
 // TasksTable defines its own TaskWithRelations type. We should probably accept `any` for tasks to avoid complex type drilling or export the type.
 // Let's import the type from TasksTable if possible, or just use any for now as `TasksTable` handles the casting.
@@ -19,6 +22,10 @@ interface TasksClientPageProps {
 export default function TasksClientPage({ tasks, total, statuses, projects, resources }: TasksClientPageProps) {
     const [activeTab, setActiveTab] = useState<"tasks" | "statuses">("tasks");
 
+    // Create Task Modal State
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger re-table load if needed, or rely on Server Actions revalidate
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -31,6 +38,15 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                         Manage tasks and their configuration.
                     </p>
                 </div>
+                {activeTab === "tasks" && (
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary/90"
+                    >
+                        <PlusIcon className="h-5 w-5" />
+                        <span>New Task</span>
+                    </button>
+                )}
             </div>
 
             {/* Tabs */}
@@ -65,13 +81,29 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
 
             {/* Content */}
             {activeTab === "tasks" ? (
-                <TasksTable
-                    tasks={tasks}
-                    total={total}
-                    statuses={statuses}
-                    projects={projects}
-                    resources={resources}
-                />
+                <>
+                    <TasksTable
+                        tasks={tasks}
+                        total={total}
+                        statuses={statuses}
+                        projects={projects}
+                        resources={resources}
+                    />
+
+                    <Modal
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        title="Create New Task"
+                    >
+                        <TaskForm
+                            statuses={statuses}
+                            projects={projects}
+                            resources={resources}
+                            onSuccess={() => setIsCreateModalOpen(false)}
+                            onCancel={() => setIsCreateModalOpen(false)}
+                        />
+                    </Modal>
+                </>
             ) : (
                 <TaskStatusesView />
             )}

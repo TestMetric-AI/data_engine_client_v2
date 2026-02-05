@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { MagnifyingGlassIcon, FunnelIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
+import Modal from "@/components/ui/Modal";
+import TaskForm from "./TaskForm";
+import { deleteTaskAction } from "./taskActions";
 // import { getResourceTasksAction } from "@/app/management/resource-roles/actions";
 // I haven't exposed `getResourceTasksAction` in `tasks/actions.ts` yet properly for generic use?
 // `tasks/actions.ts` has create/update/delete. I need a getter there or use the service directly in page.
@@ -58,6 +61,30 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
             }
         });
         router.push(`${pathname}?${params.toString()}`);
+    }
+
+    // Edit Modal State
+    const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null);
+
+    // Delete Modal State
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [taskToDelete, setTaskToDelete] = useState<TaskWithRelations | null>(null);
+
+    function initiateDelete(task: TaskWithRelations) {
+        setTaskToDelete(task);
+        setDeleteModalOpen(true);
+    }
+
+    async function handleDelete() {
+        if (!taskToDelete) return;
+        try {
+            await deleteTaskAction(taskToDelete.id);
+            setDeleteModalOpen(false);
+            setTaskToDelete(null);
+        } catch (error) {
+            console.error(error);
+            alert("Failed to delete task");
+        }
     }
 
     return (
@@ -143,6 +170,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Project</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Priority</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Due Date</th>
+                            <th className="whitespace-nowrap px-4 py-3 font-medium text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -177,11 +205,29 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                 <td className="px-4 py-3 text-text-secondary">
                                     {task.dueDate ? format(new Date(task.dueDate), "MMM d, yyyy") : "-"}
                                 </td>
+                                <td className="px-4 py-3 text-right">
+                                    <div className="flex justify-end gap-2 opacity-0 transition group-hover:opacity-100">
+                                        <button
+                                            onClick={() => setEditingTask(task)}
+                                            className="rounded-lg p-1.5 text-text-secondary hover:bg-surface hover:text-primary"
+                                            title="Edit Task"
+                                        >
+                                            <PencilSquareIcon className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => initiateDelete(task)}
+                                            className="rounded-lg p-1.5 text-text-secondary hover:bg-rose-50 hover:text-rose-600"
+                                            title="Delete Task"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         ))}
                         {tasks.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-4 py-10 text-center text-text-secondary">
+                                <td colSpan={7} className="px-4 py-10 text-center text-text-secondary">
                                     No tasks found.
                                 </td>
                             </tr>
@@ -189,6 +235,50 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                     </tbody>
                 </table>
             </div>
+
+            {/* Edit Modal */}
+            <Modal
+                isOpen={!!editingTask}
+                onClose={() => setEditingTask(null)}
+                title="Edit Task"
+            >
+                <TaskForm
+                    taskToEdit={editingTask}
+                    statuses={statuses}
+                    projects={projects}
+                    resources={resources}
+                    onSuccess={() => setEditingTask(null)}
+                    onCancel={() => setEditingTask(null)}
+                />
+            </Modal>
+
+            {/* Delete Modal */}
+            <Modal
+                isOpen={deleteModalOpen}
+                onClose={() => setDeleteModalOpen(false)}
+                title="Delete Task"
+            >
+                <div className="flex flex-col gap-4">
+                    <p className="text-text-secondary">
+                        Are you sure you want to delete task <strong>{taskToDelete?.title}</strong>?
+                        This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button
+                            onClick={() => setDeleteModalOpen(false)}
+                            className="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary transition hover:bg-surface"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </section>
     );
 }
