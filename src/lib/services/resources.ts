@@ -61,6 +61,12 @@ export async function getResourceById(id: string) {
     });
 }
 
+export async function getResourceByUserId(userId: string) {
+    return prisma.resource.findUnique({
+        where: { userId },
+    });
+}
+
 export async function createResource(data: ResourceCreateInput) {
     // Validate uniqueness of userId is enforced by schema (@unique), but we can double check or let Prisma throw.
     // Also validate User is active?

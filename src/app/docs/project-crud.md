@@ -81,3 +81,25 @@ This module implements a CRUD system for `ResourceRole`, located at `/management
 - **Form**:
     - **Name**: Unique name for the role.
     - **Description**: Optional description.
+
+---
+
+## Resource Task Management & Notes
+
+### Overview
+Enhances the Resource Management system with tasks and notes for better activity tracking.
+
+### Components
+- **Resource Task Statuses**: Defines states (e.g., Todo, In Progress) with custom colors.
+    - **UI**: `/management/resource-task-statuses`.
+- **Resource Tasks**:
+    - **UI**: Global view at `/management/tasks` and per-resource view in Detail Page.
+    - **Features**: Filterable list, Status tracking with History, Priority.
+- **Resource Notes**:
+    - **UI**: Integrated in Resource Detail view.
+    - **Features**: Activity stream for comments and updates.
+
+### Services
+- `resource-tasks.ts`: Manages tasks and automatically records status changes in `ResourceTaskStatusHistory`.
+- `resource-notes.ts`: Manages notes associated with resources.
+- `resource-task-statuses.ts`: CRUD for task statuses.
