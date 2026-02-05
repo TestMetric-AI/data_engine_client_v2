@@ -1,5 +1,7 @@
 "use client";
 
+import { triggerLegalEnrichmentAction } from "./actions";
+
 import { useEffect, useMemo, useState } from "react";
 
 type Pagination = {
@@ -39,6 +41,27 @@ export default function DepositsDatasetPage() {
   const [exoneratedFilter, setExoneratedFilter] = useState<
     "ALL" | "SI" | "NO"
   >("ALL");
+
+  const [triggering, setTriggering] = useState(false);
+
+  const handleTriggerEnrichment = async () => {
+    if (!confirm("Are you sure you want to trigger the legal enrichment pipeline?")) return;
+
+    setTriggering(true);
+    try {
+      const result = await triggerLegalEnrichmentAction();
+      if (result.success) {
+        alert("Pipeline triggered successfully!");
+      } else {
+        alert("Failed to trigger pipeline: " + result.message);
+      }
+    } catch (err) {
+      alert("An error occurred.");
+      console.error(err);
+    } finally {
+      setTriggering(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -132,6 +155,13 @@ export default function DepositsDatasetPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
+          <button
+            onClick={handleTriggerEnrichment}
+            disabled={triggering}
+            className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
+          >
+            {triggering ? "Triggering..." : "Trigger Legal Enrichment"}
+          </button>
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
             <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-secondary">
               <path
@@ -156,9 +186,9 @@ export default function DepositsDatasetPage() {
               }
               className="bg-transparent text-xs font-semibold text-text-primary focus:outline-none"
             >
-              <option value="ALL">All</option>
-              <option value="SI">SI</option>
-              <option value="NO">NO</option>
+              <option value="ALL" className="bg-card text-text-primary">All</option>
+              <option value="SI" className="bg-card text-text-primary">SI</option>
+              <option value="NO" className="bg-card text-text-primary">NO</option>
             </select>
           </div>
         </div>
