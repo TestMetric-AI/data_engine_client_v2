@@ -1,6 +1,6 @@
 "use client";
 
-import { triggerLegalEnrichmentAction } from "./actions";
+import { triggerLegalEnrichmentAction, triggerExonerationCheckAction } from "./actions";
 import Modal from "@/components/ui/Modal";
 
 import { useEffect, useMemo, useState } from "react";
@@ -45,24 +45,45 @@ export default function DepositsDatasetPage() {
 
   const [triggering, setTriggering] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [modalAction, setModalAction] = useState<"ENRICHMENT" | "EXONERATION" | null>(null);
 
-  const performEnrichmentTrigger = async () => {
+  const handleConfirmAction = async () => {
     setShowConfirmModal(false);
     setTriggering(true);
     try {
-      const result = await triggerLegalEnrichmentAction();
-      if (result.success) {
-        alert("Pipeline triggered successfully!");
-      } else {
-        alert("Failed to trigger pipeline: " + result.message);
+      let result;
+      if (modalAction === "ENRICHMENT") {
+        result = await triggerLegalEnrichmentAction();
+      } else if (modalAction === "EXONERATION") {
+        result = await triggerExonerationCheckAction();
+      }
+
+      if (result) {
+        if (result.success) {
+          alert(result.message);
+          // Reload rows to reflect changes if exoneration check was run
+          if (modalAction === "EXONERATION") {
+            window.location.reload();
+          }
+        } else {
+          alert("Failed: " + result.message);
+        }
       }
     } catch (err) {
       alert("An error occurred.");
       console.error(err);
     } finally {
       setTriggering(false);
+      setModalAction(null);
     }
   };
+
+  const openConfirmModal = (action: "ENRICHMENT" | "EXONERATION") => {
+    setModalAction(action);
+    setShowConfirmModal(true);
+  };
+  // Removed old performEnrichmentTrigger to avoid duplication and clutter
+
 
   useEffect(() => {
     let isMounted = true;
@@ -157,11 +178,18 @@ export default function DepositsDatasetPage() {
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
           <button
-            onClick={() => setShowConfirmModal(true)}
+            onClick={() => openConfirmModal("EXONERATION")}
+            disabled={triggering}
+            className="rounded-2xl border border-primary px-4 py-2 text-xs font-semibold text-primary shadow-sm disabled:opacity-50 hover:bg-surface transition-colors"
+          >
+            {triggering && modalAction === "EXONERATION" ? "Processing..." : "Trigger Exoneration Check"}
+          </button>
+          <button
+            onClick={() => openConfirmModal("ENRICHMENT")}
             disabled={triggering}
             className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
           >
-            {triggering ? "Triggering..." : "Trigger Legal Enrichment"}
+            {triggering && modalAction === "ENRICHMENT" ? "Triggering..." : "Trigger Legal Enrichment"}
           </button>
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
             <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-secondary">
@@ -372,11 +400,13 @@ export default function DepositsDatasetPage() {
       <Modal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        title="Confirm Trigger"
+        title={modalAction === "ENRICHMENT" ? "Confirm Enrichment Trigger" : "Confirm Exoneration Check"}
       >
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Are you sure you want to trigger the legal enrichment pipeline? This process may take some time.
+            {modalAction === "ENRICHMENT"
+              ? "Are you sure you want to trigger the legal enrichment pipeline? This process may take some time."
+              : "Are you sure you want to check for exonerations? This will update records matching the local client list."}
           </p>
           <div className="flex justify-end gap-3">
             <button
@@ -386,7 +416,7 @@ export default function DepositsDatasetPage() {
               Cancel
             </button>
             <button
-              onClick={performEnrichmentTrigger}
+              onClick={handleConfirmAction}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
             >
               Confirm

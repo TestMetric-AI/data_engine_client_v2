@@ -685,5 +685,16 @@ export async function updateCustomerLegalInfo(
     return result.rowsAffected;
 }
 
+export async function updateExoneratedStatus(): Promise<number> {
+    await ensureDepositsTable();
+    // Using subquery for SQLite update
+    const result = await turso.execute(
+        `UPDATE ${DEPOSITS_DP10_TABLE}
+         SET EXONERATED = 1
+         WHERE LEGAL_ID IN (SELECT NUMBER_PERSONAL_ID FROM client_exonerated)`
+    );
+    return result.rowsAffected;
+}
+
 
 
