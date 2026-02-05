@@ -16,6 +16,7 @@ import {
   ChevronRightIcon,
   UserPlusIcon,
   LayerIcon,
+  ShieldCheckIcon,
 } from "./icons";
 
 const navSections = [
@@ -178,6 +179,16 @@ export default function Sidebar() {
               >
                 <ShieldIcon className="h-5 w-5 shrink-0" />
                 {!isCollapsed && <span>Roles</span>}
+              </Link>
+              <Link
+                href="/admin/permissions"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/permissions"
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+              >
+                <ShieldCheckIcon className="h-5 w-5 shrink-0" />
+                {!isCollapsed && <span>Permissions</span>}
               </Link>
             </div>
           </div>
