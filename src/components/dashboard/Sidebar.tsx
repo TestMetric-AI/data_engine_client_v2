@@ -51,6 +51,7 @@ const navSections = [
   {
     category: "Management",
     items: [
+      { label: "Projects", href: "/management/projects", icon: FolderIcon },
       { label: "Access", href: "/access", icon: ShieldIcon },
       { label: "Team", href: "/team", icon: UsersIcon },
       { label: "History", href: "/history", icon: CalendarIcon },

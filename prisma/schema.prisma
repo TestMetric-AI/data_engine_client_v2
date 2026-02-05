@@ -66,16 +66,16 @@ model Permission {
 // ============================================================================
 
 model Project {
-  id          String    @id @default(uuid()) @db.Uuid
-  name        String    @db.Text
-  code        String?   @unique @db.Text
-  description String?   @db.Text
-  startDate   DateTime? @map("start_date") @db.Date
-  endDate     DateTime? @map("end_date") @db.Date
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-
-  tasks ResourceTask[]
+  id          String         @id @default(uuid()) @db.Uuid
+  name        String         @db.Text
+  code        String?        @unique @db.Text
+  description String?        @db.Text
+  startDate   DateTime?      @map("start_date") @db.Date
+  endDate     DateTime?      @map("end_date") @db.Date
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  isActive    Boolean        @default(true)
+  tasks       ResourceTask[]
 
   // típicos: listar proyectos recientes / por código
   @@index([createdAt(sort: Desc)])
