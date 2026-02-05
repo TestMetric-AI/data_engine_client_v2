@@ -17,9 +17,22 @@ import {
   UserPlusIcon,
   LayerIcon,
   ShieldCheckIcon,
+  UserGroupIcon,
 } from "./icons";
 
-const navSections = [
+interface NavItem {
+  label: string;
+  icon: any;
+  href?: string;
+  subItems?: { label: string; href: string }[];
+}
+
+interface NavSection {
+  category: string;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
   {
     category: "Overview",
     items: [
@@ -45,15 +58,15 @@ const navSections = [
           { label: "Client Exonerated", href: "/datasets/client_exonerated" },
         ],
       },
-      { label: "Lineage", href: "/lineage", icon: MapPinIcon },
     ],
   },
   {
     category: "Management",
     items: [
-      { label: "Access", href: "/access", icon: ShieldIcon },
-      { label: "Team", href: "/team", icon: UsersIcon },
-      { label: "History", href: "/history", icon: CalendarIcon },
+      { label: "Resources", href: "/management/resources", icon: UserGroupIcon },
+      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon },
+      { label: "Projects", href: "/management/projects", icon: FolderIcon },
+      { label: "Tasks", href: "/management/tasks", icon: CalendarIcon }
     ],
   },
 ];
@@ -102,7 +115,7 @@ export default function Sidebar() {
             <div className="flex flex-col gap-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.href ? pathname === item.href : false;
+                const isActive = 'href' in item ? pathname === item.href : false;
 
                 // Handle items with subitems (like Datasets)
                 if (item.subItems) {
@@ -171,14 +184,14 @@ export default function Sidebar() {
                 {!isCollapsed && <span>Register User</span>}
               </Link>
               <Link
-                href="/admin/roles"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/roles"
+                href="/management/roles"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/management/roles"
                   ? "bg-surface text-text-primary"
                   : "text-text-secondary"
                   } ${isCollapsed ? "justify-center px-2" : ""}`}
               >
                 <ShieldIcon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>Roles</span>}
+                {!isCollapsed && <span>System Roles</span>}
               </Link>
               <Link
                 href="/admin/permissions"

@@ -25,7 +25,7 @@ export async function PATCH(
             return NextResponse.json(
                 {
                     message: "Datos invalidos",
-                    errors: validation.error.errors,
+                    errors: validation.error.issues,
                 },
                 { status: 400 }
             );

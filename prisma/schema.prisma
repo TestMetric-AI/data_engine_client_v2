@@ -13,15 +13,25 @@ datasource db {
   provider = "postgresql"
 }
 
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   name      String?
   password  String
   roles     Role[]
-  createdAt DateTime @default(now())
-  isActive  Boolean  @default(true)
-  updatedAt DateTime @updatedAt
+  resource  Resource? // 0..1
+  createdAt DateTime  @default(now())
+  isActive  Boolean   @default(true)
+  updatedAt DateTime  @updatedAt
+
+  @@index([isActive])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Role {
@@ -33,6 +43,9 @@ model Role {
   createdAt   DateTime     @default(now())
   isActive    Boolean      @default(true)
   updatedAt   DateTime     @updatedAt
+
+  @@index([isActive])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Permission {
@@ -43,4 +56,165 @@ model Permission {
   createdAt   DateTime @default(now())
   isActive    Boolean  @default(true)
   updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ============================================================================
+// RESOURCE MANAGEMENT
+// ============================================================================
+
+model Project {
+  id          String         @id @default(uuid()) @db.Uuid
+  name        String         @db.Text
+  code        String?        @unique @db.Text
+  description String?        @db.Text
+  startDate   DateTime?      @map("start_date") @db.Date
+  endDate     DateTime?      @map("end_date") @db.Date
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  isActive    Boolean        @default(true)
+  tasks       ResourceTask[]
+
+  // típicos: listar proyectos recientes / por código
+  @@index([createdAt(sort: Desc)])
+  @@map("projects")
+}
+
+model ResourceRole {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String     @unique @db.Text
+  description String?    @db.Text
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  isActive    Boolean    @default(true)
+  resources   Resource[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([isActive])
+  @@map("resource_roles")
+}
+
+model ResourceTaskStatus {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique @db.Text
+  name       String   @db.Text
+  color      String   @default("#607d8b") @db.Text
+  orderIndex Int      @unique @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tasks             ResourceTask[]
+  fromStatusHistory ResourceTaskStatusHistory[] @relation("FromStatus")
+  toStatusHistory   ResourceTaskStatusHistory[] @relation("ToStatus")
+
+  @@index([createdAt(sort: Desc)])
+  @@map("resource_task_statuses")
+}
+
+model Resource {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Resource SIEMPRE pertenece a un User (User puede o no tener Resource)
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName             String   @map("full_name") @db.Text
+  roleId               String?  @map("role_id") @db.Uuid
+  allocationPercentage Int      @default(100) @map("allocation_percentage")
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  role          ResourceRole?               @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  tasks         ResourceTask[]
+  notes         ResourceNote[]              @relation("NotesForResource")
+  notesAuthored ResourceNote[]              @relation("NotesByAuthor")
+  statusChanges ResourceTaskStatusHistory[] @relation("StatusChangedBy")
+  approvedTasks ResourceTask[]              @relation("ApprovedBy")
+
+  @@index([active])
+  @@index([roleId])
+  @@index([createdAt(sort: Desc)])
+  @@map("resources")
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ResourceTask {
+  id             String       @id @default(uuid()) @db.Uuid
+  resourceId     String       @map("resource_id") @db.Uuid
+  projectId      String?      @map("project_id") @db.Uuid
+  statusId       String       @map("status_id") @db.Uuid
+  title          String       @db.Text
+  summary        String?      @db.Text
+  priority       TaskPriority @default(medium)
+  dueDate        DateTime?    @map("due_date") @db.Date
+  estimatedHours Decimal?     @map("estimated_hours") @db.Decimal(6, 2)
+  actualHours    Decimal?     @map("actual_hours") @db.Decimal(6, 2)
+
+  approvalStatus ApprovalStatus @default(PENDING) @map("approval_status")
+  approvedById   String?        @map("approved_by") @db.Uuid
+  approvedAt     DateTime?      @map("approved_at") @db.Timestamptz
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  resource      Resource                    @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  project       Project?                    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  status        ResourceTaskStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  statusHistory ResourceTaskStatusHistory[]
+  approvedBy    Resource?                   @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  // tablero / listados
+  @@index([statusId])
+  @@index([resourceId])
+  @@index([projectId])
+  @@index([dueDate])
+  @@index([priority])
+  @@index([updatedAt(sort: Desc)])
+  // filtros típicos en board: proyecto + status, recurso + status, etc.
+  @@index([projectId, statusId])
+  @@index([resourceId, statusId])
+  @@map("resource_tasks")
+}
+
+model ResourceNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  resourceId String   @map("resource_id") @db.Uuid
+  authorId   String?  @map("author_id") @db.Uuid
+  note       String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  resource Resource  @relation("NotesForResource", fields: [resourceId], references: [id], onDelete: Cascade)
+  author   Resource? @relation("NotesByAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([resourceId])
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("resource_notes")
+}
+
+model ResourceTaskStatusHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  taskId       String   @map("task_id") @db.Uuid
+  fromStatusId String?  @map("from_status_id") @db.Uuid
+  toStatusId   String   @map("to_status_id") @db.Uuid
+  changedById  String?  @map("changed_by") @db.Uuid
+  changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz
+  notes        String?  @db.Text
+
+  task       ResourceTask        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus ResourceTaskStatus? @relation("FromStatus", fields: [fromStatusId], references: [id], onDelete: SetNull)
+  toStatus   ResourceTaskStatus  @relation("ToStatus", fields: [toStatusId], references: [id], onDelete: Restrict)
+  changedBy  Resource?           @relation("StatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  // auditoría: ver historia por tarea, por usuario, por fecha
+  @@index([taskId, changedAt(sort: Desc)])
+  @@index([changedById, changedAt(sort: Desc)])
+  @@index([toStatusId, changedAt(sort: Desc)])
+  @@map("resource_task_status_history")
 }

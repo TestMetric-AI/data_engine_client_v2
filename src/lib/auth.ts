@@ -29,7 +29,11 @@ export const authOptions: NextAuthOptions = {
                         email: credentials.email,
                     },
                     include: {
-                        roles: true,
+                        roles: {
+                            include: {
+                                permissions: true
+                            }
+                        },
                     },
                 });
 
@@ -46,11 +50,20 @@ export const authOptions: NextAuthOptions = {
                     return null;
                 }
 
+                // Filter active roles
+                const activeRoles = user.roles.filter(role => role.isActive);
+
+                // Flatten permissions from all active roles
+                const allPermissions = Array.from(
+                    new Set(activeRoles.flatMap((role) => role.permissions.map((p) => p.name)))
+                );
+
                 return {
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    roles: user.roles.map((role) => role.name),
+                    roles: activeRoles.map((role) => role.name),
+                    permissions: allPermissions,
                 };
             },
         }),
@@ -60,6 +73,7 @@ export const authOptions: NextAuthOptions = {
             if (token && session.user) {
                 session.user.id = token.id;
                 session.user.roles = token.roles;
+                session.user.permissions = token.permissions;
             }
             return session;
         },
@@ -67,6 +81,7 @@ export const authOptions: NextAuthOptions = {
             if (user) {
                 token.id = user.id;
                 token.roles = user.roles;
+                token.permissions = user.permissions;
             }
             return token;
         },
