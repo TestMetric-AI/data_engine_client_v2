@@ -1,6 +1,7 @@
 "use client";
 
 import { triggerLegalEnrichmentAction } from "./actions";
+import Modal from "@/components/ui/Modal";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -43,10 +44,10 @@ export default function DepositsDatasetPage() {
   >("ALL");
 
   const [triggering, setTriggering] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const handleTriggerEnrichment = async () => {
-    if (!confirm("Are you sure you want to trigger the legal enrichment pipeline?")) return;
-
+  const performEnrichmentTrigger = async () => {
+    setShowConfirmModal(false);
     setTriggering(true);
     try {
       const result = await triggerLegalEnrichmentAction();
@@ -156,7 +157,7 @@ export default function DepositsDatasetPage() {
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
           <button
-            onClick={handleTriggerEnrichment}
+            onClick={() => setShowConfirmModal(true)}
             disabled={triggering}
             className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
           >
@@ -367,6 +368,32 @@ export default function DepositsDatasetPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title="Confirm Trigger"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            Are you sure you want to trigger the legal enrichment pipeline? This process may take some time.
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-surface"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={performEnrichmentTrigger}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
