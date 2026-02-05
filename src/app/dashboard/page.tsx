@@ -70,7 +70,7 @@ export default function DashboardPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#f5f6fb_45%,_#eef2ff_100%)]">
+        <div className="min-h-screen bg-background">
             <div className="flex min-h-screen flex-col lg:flex-row">
                 <Sidebar />
                 <div className="flex flex-1 flex-col">
