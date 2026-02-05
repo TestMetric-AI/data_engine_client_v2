@@ -15,29 +15,53 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   UserPlusIcon,
+  LayerIcon,
+  ShieldCheckIcon,
 } from "./icons";
 
-const navItems = [
+const navSections = [
   {
-    label: "Datasets",
-    icon: FolderIcon,
-    subItems: [
-      { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
-      { label: "Deposits Query", href: "/datasets/deposits_query" },
-      { label: "Client Exonerated", href: "/datasets/client_exonerated" },
+    category: "Overview",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayerIcon },
     ],
   },
-  { label: "Lineage", icon: MapPinIcon },
-  { label: "Access", icon: ShieldIcon },
-  { label: "Team", icon: UsersIcon },
-  { label: "History", icon: CalendarIcon },
+  {
+    category: "Pipelines",
+    items: [
+      { label: "Deposits", href: "/pipelines/deposits", icon: ChartIcon },
+      { label: "Client Exonerated", href: "/pipelines/client_exonerated", icon: ChartIcon },
+    ],
+  },
+  {
+    category: "Data Catalog",
+    items: [
+      {
+        label: "Datasets",
+        icon: FolderIcon,
+        subItems: [
+          { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
+          { label: "Deposits Query", href: "/datasets/deposits_query" },
+          { label: "Client Exonerated", href: "/datasets/client_exonerated" },
+        ],
+      },
+      { label: "Lineage", href: "/lineage", icon: MapPinIcon },
+    ],
+  },
+  {
+    category: "Management",
+    items: [
+      { label: "Access", href: "/access", icon: ShieldIcon },
+      { label: "Team", href: "/team", icon: UsersIcon },
+      { label: "History", href: "/history", icon: CalendarIcon },
+    ],
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isPipelinesActive = pathname.startsWith("/pipelines");
 
   return (
     <aside
@@ -67,95 +91,109 @@ export default function Sidebar() {
         )}
       </div>
 
-      <nav className="flex flex-col gap-2 text-sm font-medium text-text-secondary">
-        <div
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${isPipelinesActive
-            ? "bg-primary text-white shadow-sm"
-            : "text-text-secondary"
-            } ${isCollapsed ? "justify-center px-2" : ""}`}
-        >
-          <ChartIcon className="h-5 w-5 shrink-0" />
-          {!isCollapsed && <span>Pipelines</span>}
-        </div>
+      <nav className="flex flex-col gap-6 overflow-y-auto no-scrollbar">
+        {navSections.map((section) => (
+          <div key={section.category} className="flex flex-col gap-2">
+            {!isCollapsed && (
+              <p className="px-3 text-xs font-bold uppercase tracking-wider text-text-secondary/70">
+                {section.category}
+              </p>
+            )}
+            <div className="flex flex-col gap-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.href ? pathname === item.href : false;
 
-        {!isCollapsed && (
-          <>
-            <Link
-              href="/pipelines/deposits"
-              className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === "/pipelines/deposits"
-                ? "bg-surface text-text-primary"
-                : "text-text-secondary"
-                }`}
-            >
-              Deposits
-            </Link>
-            <Link
-              href="/pipelines/client_exonerated"
-              className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === "/pipelines/client_exonerated"
-                ? "bg-surface text-text-primary"
-                : "text-text-secondary"
-                }`}
-            >
-              Client Exonerated
-            </Link>
-          </>
-        )}
+                // Handle items with subitems (like Datasets)
+                if (item.subItems) {
+                  return (
+                    <div key={item.label} className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface text-text-secondary ${isCollapsed ? "justify-center px-2" : ""
+                          }`}
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        {!isCollapsed && <span>{item.label}</span>}
+                      </button>
+                      {!isCollapsed &&
+                        item.subItems.map((subItem) => (
+                          <Link
+                            key={subItem.href}
+                            href={subItem.href}
+                            className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === subItem.href
+                              ? "bg-surface text-text-primary"
+                              : "text-text-secondary"
+                              }`}
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                    </div>
+                  );
+                }
 
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className="flex flex-col gap-1">
-              <button
-                type="button"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isCollapsed ? "justify-center px-2" : ""
-                  }`}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>{item.label}</span>}
-              </button>
-              {!isCollapsed &&
-                item.subItems?.map((subItem) => (
+                return (
                   <Link
-                    key={subItem.href}
-                    href={subItem.href}
-                    className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === subItem.href
-                      ? "bg-surface text-text-primary"
+                    key={item.label}
+                    href={item.href || "#"}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isActive
+                      ? "bg-primary text-white shadow-sm"
                       : "text-text-secondary"
-                      }`}
+                      } ${isCollapsed ? "justify-center px-2" : ""}`}
                   >
-                    {subItem.label}
+                    <Icon className="h-5 w-5 shrink-0" />
+                    {!isCollapsed && <span>{item.label}</span>}
                   </Link>
-                ))}
+                );
+              })}
             </div>
-          );
-        })}
-        {/* Admin Links */}
-        {session?.user?.roles?.includes("ADMIN") && (
-          <>
-            <Link
-              href="/admin/users/register"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/users/register"
-                ? "bg-surface text-text-primary"
-                : "text-text-secondary"
-                } ${isCollapsed ? "justify-center px-2" : ""}`}
-            >
-              <UserPlusIcon className="h-5 w-5 shrink-0" />
-              {!isCollapsed && <span>Register User</span>}
-            </Link>
+          </div>
+        ))}
 
-            <Link
-              href="/admin/roles"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/roles"
-                ? "bg-surface text-text-primary"
-                : "text-text-secondary"
-                } ${isCollapsed ? "justify-center px-2" : ""}`}
-            >
-              <ShieldIcon className="h-5 w-5 shrink-0" />
-              {!isCollapsed && <span>Roles</span>}
-            </Link>
-          </>
+        {/* Admin Section */}
+        {session?.user?.roles?.includes("ADMIN") && (
+          <div className="flex flex-col gap-2">
+            {!isCollapsed && (
+              <p className="px-3 text-xs font-bold uppercase tracking-wider text-text-secondary/70">
+                Admin
+              </p>
+            )}
+            <div className="flex flex-col gap-1">
+              <Link
+                href="/admin/users/register"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/users/register"
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+              >
+                <UserPlusIcon className="h-5 w-5 shrink-0" />
+                {!isCollapsed && <span>Register User</span>}
+              </Link>
+              <Link
+                href="/admin/roles"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/roles"
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+              >
+                <ShieldIcon className="h-5 w-5 shrink-0" />
+                {!isCollapsed && <span>Roles</span>}
+              </Link>
+              <Link
+                href="/admin/permissions"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/permissions"
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary"
+                  } ${isCollapsed ? "justify-center px-2" : ""}`}
+              >
+                <ShieldCheckIcon className="h-5 w-5 shrink-0" />
+                {!isCollapsed && <span>Permissions</span>}
+              </Link>
+            </div>
+          </div>
         )}
       </nav>
-    </aside >
+    </aside>
   );
 }

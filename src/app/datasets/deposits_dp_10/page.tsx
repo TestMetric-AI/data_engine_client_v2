@@ -1,5 +1,8 @@
 "use client";
 
+import { triggerLegalEnrichmentAction, triggerExonerationCheckAction } from "./actions";
+import Modal from "@/components/ui/Modal";
+
 import { useEffect, useMemo, useState } from "react";
 
 type Pagination = {
@@ -39,6 +42,48 @@ export default function DepositsDatasetPage() {
   const [exoneratedFilter, setExoneratedFilter] = useState<
     "ALL" | "SI" | "NO"
   >("ALL");
+
+  const [triggering, setTriggering] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [modalAction, setModalAction] = useState<"ENRICHMENT" | "EXONERATION" | null>(null);
+
+  const handleConfirmAction = async () => {
+    setShowConfirmModal(false);
+    setTriggering(true);
+    try {
+      let result;
+      if (modalAction === "ENRICHMENT") {
+        result = await triggerLegalEnrichmentAction();
+      } else if (modalAction === "EXONERATION") {
+        result = await triggerExonerationCheckAction();
+      }
+
+      if (result) {
+        if (result.success) {
+          alert(result.message);
+          // Reload rows to reflect changes if exoneration check was run
+          if (modalAction === "EXONERATION") {
+            window.location.reload();
+          }
+        } else {
+          alert("Failed: " + result.message);
+        }
+      }
+    } catch (err) {
+      alert("An error occurred.");
+      console.error(err);
+    } finally {
+      setTriggering(false);
+      setModalAction(null);
+    }
+  };
+
+  const openConfirmModal = (action: "ENRICHMENT" | "EXONERATION") => {
+    setModalAction(action);
+    setShowConfirmModal(true);
+  };
+  // Removed old performEnrichmentTrigger to avoid duplication and clutter
+
 
   useEffect(() => {
     let isMounted = true;
@@ -132,6 +177,20 @@ export default function DepositsDatasetPage() {
           </p>
         </div>
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
+          <button
+            onClick={() => openConfirmModal("EXONERATION")}
+            disabled={triggering}
+            className="rounded-2xl border border-primary px-4 py-2 text-xs font-semibold text-primary shadow-sm disabled:opacity-50 hover:bg-surface transition-colors"
+          >
+            {triggering && modalAction === "EXONERATION" ? "Processing..." : "Trigger Exoneration Check"}
+          </button>
+          <button
+            onClick={() => openConfirmModal("ENRICHMENT")}
+            disabled={triggering}
+            className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
+          >
+            {triggering && modalAction === "ENRICHMENT" ? "Triggering..." : "Trigger Legal Enrichment"}
+          </button>
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
             <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-secondary">
               <path
@@ -156,9 +215,9 @@ export default function DepositsDatasetPage() {
               }
               className="bg-transparent text-xs font-semibold text-text-primary focus:outline-none"
             >
-              <option value="ALL">All</option>
-              <option value="SI">SI</option>
-              <option value="NO">NO</option>
+              <option value="ALL" className="bg-card text-text-primary">All</option>
+              <option value="SI" className="bg-card text-text-primary">SI</option>
+              <option value="NO" className="bg-card text-text-primary">NO</option>
             </select>
           </div>
         </div>
@@ -337,6 +396,34 @@ export default function DepositsDatasetPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title={modalAction === "ENRICHMENT" ? "Confirm Enrichment Trigger" : "Confirm Exoneration Check"}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            {modalAction === "ENRICHMENT"
+              ? "Are you sure you want to trigger the legal enrichment pipeline? This process may take some time."
+              : "Are you sure you want to check for exonerations? This will update records matching the local client list."}
+          </p>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-surface"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmAction}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
