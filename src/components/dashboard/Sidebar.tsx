@@ -17,6 +17,7 @@ import {
   UserPlusIcon,
   LayerIcon,
   ShieldCheckIcon,
+  UserGroupIcon,
 } from "./icons";
 
 const navSections = [
@@ -51,6 +52,7 @@ const navSections = [
   {
     category: "Management",
     items: [
+      { label: "Resources", href: "/management/resources", icon: UserGroupIcon },
       { label: "Projects", href: "/management/projects", icon: FolderIcon },
       { label: "Access", href: "/access", icon: ShieldIcon },
       { label: "Team", href: "/team", icon: UsersIcon },

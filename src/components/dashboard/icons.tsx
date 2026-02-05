@@ -17,6 +17,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   UserPlusIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 
 export {
@@ -38,4 +39,5 @@ export {
   ChevronLeftIcon,
   ChevronRightIcon,
   UserPlusIcon,
+  UserGroupIcon,
 };

@@ -25,3 +25,35 @@ Server-side functions called by the UI.
     - Allows Activating/Deactivating projects via Power icon.
     - Status column indicates Active/Inactive state.
 - **Form (`src/app/management/projects/ProjectForm.tsx`)**: Form for creating and editing projects. Includes validation.
+
+---
+
+## Resource CRUD Documentation
+
+### Overview
+This module implements a CRUD system for the `Resource` entity, located at `/management/resources`. A Resource is an active User with allocated time and a role.
+
+### Database Service (`src/lib/services/resources.ts`)
+- `getResources`: Fetches paginated resources with filtering.
+- `createResource`: Assigns a Resource record to an existing Active User.
+- `updateResource`: Updates resource details (role, allocation).
+- `toggleResourceStatus`: Activates/Deactivates a resource.
+- `getEligibleUsers`: Fetches active users who are not yet resources.
+
+### Server Actions
+- `getResourcesAction`
+- `createResourceAction`
+- `updateResourceAction`
+- `toggleResourceStatusAction`
+- `getFormDataAction`: Fetches metadata for the form (users, roles).
+
+### UI Components
+- **Table**: Lists resources. Supports filtering by name/role/email.
+    - Columns: Full Name, Email, Role, Allocation, Status.
+    - Actions: Edit, Toggle Status (Power Icon).
+- **Form**:
+    - **User**: Select from active users (Create only).
+    - **Full Name**: Auto-filled from user but editable.
+    - **Role**: Select from available resource roles.
+    - **Allocation**: Percentage slider (0-100).
+- **Modal**: Used for Form (Create/Edit) and Confirmation (Status Toggle).
