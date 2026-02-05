@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ResourceTaskStatusesTable, { ResourceTaskStatus } from "./ResourceTaskStatusesTable";
 import ResourceTaskStatusForm from "./ResourceTaskStatusForm";
 
-export default function ResourceTaskStatusesPage() {
+export default function TaskStatusesView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [statusToEdit, setStatusToEdit] = useState<ResourceTaskStatus | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -36,12 +36,12 @@ export default function ResourceTaskStatusesPage() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p className="text-sm font-semibold text-text-secondary">Management</p>
-                    <h1 className="mt-2 font-display text-3xl font-semibold text-text-primary">
-                        Task Statuses
-                    </h1>
-                    <p className="mt-2 text-sm text-text-secondary">
-                        Manage statuses for resource tasks.
+                    {/* Header removed as it will be in the parent page or we can keep a sub-header */}
+                    <h2 className="font-display text-lg font-semibold text-text-primary">
+                        Manage Statuses
+                    </h2>
+                    <p className="text-sm text-text-secondary">
+                        Define the available statuses for tasks.
                     </p>
                 </div>
                 <button

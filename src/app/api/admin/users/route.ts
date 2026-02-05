@@ -128,15 +128,35 @@ export async function PATCH(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { userId, isActive } = body;
+        const { userId, isActive, roles } = body;
 
-        if (!userId || typeof isActive !== "boolean") {
-            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        if (!userId) {
+            return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+        }
+
+        const updateData: any = {};
+        if (typeof isActive === "boolean") updateData.isActive = isActive;
+        if (roles && Array.isArray(roles)) {
+            // Update roles: disconnect all and connect new ones by name
+            // First, find IDs for these role names
+            const rolesToConnect = await prisma.role.findMany({
+                where: { name: { in: roles } },
+                select: { id: true }
+            });
+
+            updateData.roles = {
+                set: rolesToConnect.map(r => ({ id: r.id }))
+            };
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: "No fields to update" }, { status: 400 });
         }
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },
-            data: { isActive },
+            data: updateData,
+            include: { roles: true } // Include roles in response to update UI
         });
 
         return NextResponse.json(updatedUser);

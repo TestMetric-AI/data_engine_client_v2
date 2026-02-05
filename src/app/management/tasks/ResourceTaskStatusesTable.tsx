@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { getResourceTaskStatusesAction, deleteResourceTaskStatusAction } from "./actions";
+import { getResourceTaskStatusesAction, deleteResourceTaskStatusAction } from "./statusActions";
 import Modal from "@/components/ui/Modal";
 
 export type ResourceTaskStatus = {

@@ -32,7 +32,7 @@ export async function getResourceTaskStatusesAction(params: {
 export async function createResourceTaskStatusAction(data: ResourceTaskStatusCreateInput): Promise<ActionResponse> {
     try {
         await createResourceTaskStatus(data);
-        revalidatePath("/management/resource-task-statuses");
+        revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status created successfully" };
     } catch (error: any) {
         console.error("Error creating resource task status:", error);
@@ -49,7 +49,7 @@ export async function updateResourceTaskStatusAction(
 ): Promise<ActionResponse> {
     try {
         await updateResourceTaskStatus(id, data);
-        revalidatePath("/management/resource-task-statuses");
+        revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status updated successfully" };
     } catch (error: any) {
         console.error("Error updating resource task status:", error);
@@ -63,7 +63,7 @@ export async function updateResourceTaskStatusAction(
 export async function deleteResourceTaskStatusAction(id: string): Promise<ActionResponse> {
     try {
         await deleteResourceTaskStatus(id);
-        revalidatePath("/management/resource-task-statuses");
+        revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status deleted successfully" };
     } catch (error: any) {
         console.error("Error deleting resource task status:", error);
@@ -77,7 +77,7 @@ export async function deleteResourceTaskStatusAction(id: string): Promise<Action
 export async function reorderResourceTaskStatusesAction(orderedIds: string[]): Promise<ActionResponse> {
     try {
         await reorderResourceTaskStatuses(orderedIds);
-        revalidatePath("/management/resource-task-statuses");
+        revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Statuses reordered successfully" };
     } catch (error) {
         console.error("Error reordering resource task statuses:", error);

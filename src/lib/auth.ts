@@ -50,16 +50,19 @@ export const authOptions: NextAuthOptions = {
                     return null;
                 }
 
-                // Flatten permissions from all roles
+                // Filter active roles
+                const activeRoles = user.roles.filter(role => role.isActive);
+
+                // Flatten permissions from all active roles
                 const allPermissions = Array.from(
-                    new Set(user.roles.flatMap((role) => role.permissions.map((p) => p.name)))
+                    new Set(activeRoles.flatMap((role) => role.permissions.map((p) => p.name)))
                 );
 
                 return {
                     id: user.id,
                     email: user.email,
                     name: user.name,
-                    roles: user.roles.map((role) => role.name),
+                    roles: activeRoles.map((role) => role.name),
                     permissions: allPermissions,
                 };
             },

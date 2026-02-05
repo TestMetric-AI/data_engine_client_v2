@@ -46,7 +46,6 @@ const navSections = [
           { label: "Client Exonerated", href: "/datasets/client_exonerated" },
         ],
       },
-      { label: "Lineage", href: "/lineage", icon: MapPinIcon },
     ],
   },
   {
@@ -56,10 +55,7 @@ const navSections = [
       { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon },
       { label: "Task Statuses", href: "/management/resource-task-statuses", icon: LayerIcon },
       { label: "Projects", href: "/management/projects", icon: FolderIcon },
-      { label: "Tasks", href: "/management/tasks", icon: CalendarIcon },
-      { label: "Access", href: "/access", icon: ShieldIcon },
-      { label: "Team", href: "/team", icon: UsersIcon },
-      { label: "History", href: "/history", icon: CalendarIcon },
+      { label: "Tasks", href: "/management/tasks", icon: CalendarIcon }
     ],
   },
 ];

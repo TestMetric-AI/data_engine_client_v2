@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createResourceTaskStatusAction, updateResourceTaskStatusAction } from "./actions";
+import { createResourceTaskStatusAction, updateResourceTaskStatusAction } from "./statusActions";
 import { ResourceTaskStatus } from "./ResourceTaskStatusesTable";
 
 interface ResourceTaskStatusFormProps {
