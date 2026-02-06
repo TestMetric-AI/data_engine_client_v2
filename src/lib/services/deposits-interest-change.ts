@@ -385,3 +385,15 @@ function getColumnType(column: string): string {
 
     return "text";
 }
+
+export async function getAllCertificateNumbers(): Promise<string[]> {
+    await ensureDepositsInterestChangeTable();
+
+    const result = await turso.execute({
+        sql: `SELECT DISTINCT "NUM_CERTIFICADO" FROM ${DEPOSITS_INTEREST_CHANGE_TABLE} WHERE "NUM_CERTIFICADO" IS NOT NULL ORDER BY "NUM_CERTIFICADO" ASC;`,
+        args: [],
+    });
+
+    return result.rows.map((row) => String(row[0]));
+}
+

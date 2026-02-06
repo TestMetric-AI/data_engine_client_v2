@@ -36,7 +36,7 @@ export default function DepositsInterestChangePage() {
     const [rows, setRows] = useState<InterestChangeRow[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
         page: 1,
-        pageSize: 100,
+        pageSize: 10,
         total: 0,
         totalPages: 1,
     });
@@ -312,8 +312,8 @@ export default function DepositsInterestChangePage() {
                                             setPagination((prev) => ({ ...prev, page }))
                                         }
                                         className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                                ? "bg-primary text-white"
-                                                : "border border-border bg-card text-text-secondary"
+                                            ? "bg-primary text-white"
+                                            : "border border-border bg-card text-text-secondary"
                                             }`}
                                     >
                                         {page}
@@ -416,8 +416,8 @@ export default function DepositsInterestChangePage() {
                                 type="button"
                                 onClick={() => setPagination((prev) => ({ ...prev, page }))}
                                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                        ? "bg-primary text-white"
-                                        : "border border-border bg-card text-text-secondary"
+                                    ? "bg-primary text-white"
+                                    : "border border-border bg-card text-text-secondary"
                                     }`}
                             >
                                 {page}
