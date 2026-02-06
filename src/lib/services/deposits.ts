@@ -446,22 +446,34 @@ export async function insertDeposits(rows: DepositsRow[]): Promise<number> {
 
     await ensureDepositsTable();
 
+    const BATCH_SIZE = 500; // Insert 500 rows at a time
     const columnsSql = DEPOSITS_DP10_COLUMNS.map((col) => `"${col}"`).join(", ");
-    const placeholders = DEPOSITS_DP10_COLUMNS.map(() => "?").join(", ");
-    const insertSql = `INSERT INTO ${DEPOSITS_DP10_TABLE} (${columnsSql}) VALUES (${placeholders});`;
 
     const transaction = await turso.transaction("write");
 
     try {
-        for (const row of rows) {
-            const values = DEPOSITS_DP10_COLUMNS.map((column) =>
-                normalizeValue(column, row[column] ?? "")
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+
+            // Create multi-row INSERT statement
+            const placeholderRows = batch
+                .map(() => `(${DEPOSITS_DP10_COLUMNS.map(() => "?").join(", ")})`)
+                .join(", ");
+
+            const batchInsertSql = `INSERT INTO ${DEPOSITS_DP10_TABLE} (${columnsSql}) VALUES ${placeholderRows};`;
+
+            // Flatten all values for the batch
+            const batchValues = batch.flatMap((row) =>
+                DEPOSITS_DP10_COLUMNS.map((column) =>
+                    normalizeValue(column, row[column] ?? "")
+                )
             );
+
             // LibSQL client handles types reasonably well.
             // We need to cast ensure values are primitives supported by SQLite.
             await transaction.execute({
-                sql: insertSql,
-                args: values as any[],
+                sql: batchInsertSql,
+                args: batchValues as any[],
             });
         }
         await transaction.commit();
