@@ -564,20 +564,60 @@ export type DepositsPage = {
 
 export async function listDeposits(
     limit: number,
-    offset: number
+    offset: number,
+    filters?: DepositsQueryFilters
 ): Promise<DepositsPage> {
     await ensureDepositsTable();
 
-    const countResult = await turso.execute(
-        `SELECT COUNT(*) as total FROM ${DEPOSITS_DP10_TABLE};`
-    );
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    // Build WHERE clause if filters are provided
+    if (filters) {
+        const exactFilters: Array<keyof DepositsQueryFilters> = [
+            "NUMERO_CONTRATO",
+            "NUM_PRODUCTO",
+            "ID_PRODUCTO",
+            "ID_CUSTOMER",
+            "MONEDA",
+            "PLAZO",
+            "ESTADO_PRODUCTO",
+        ];
+
+        for (const key of exactFilters) {
+            const value = filters[key];
+            if (value) {
+                conditions.push(`"${key}" = ?`);
+                args.push(value);
+            }
+        }
+
+        if (filters.FECHA_NEGOCIACION_HASTA) {
+            conditions.push(`"FECHA_NEGOCIACION" <= ?`);
+            args.push(filters.FECHA_NEGOCIACION_HASTA);
+        }
+
+        if (filters.FECHA_EFECTIVA_DESDE && filters.FECHA_EFECTIVA_HASTA) {
+            conditions.push(`"FECHA_EFECTIVA" BETWEEN ? AND ?`);
+            args.push(filters.FECHA_EFECTIVA_DESDE);
+            args.push(filters.FECHA_EFECTIVA_HASTA);
+        }
+    }
+
+    const whereClause =
+        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const countResult = await turso.execute({
+        sql: `SELECT COUNT(*) as total FROM ${DEPOSITS_DP10_TABLE}${whereClause};`,
+        args: args,
+    });
     const total = Number(countResult.rows[0][0] ?? 0);
 
     const dataResult = await turso.execute({
-        sql: `SELECT * FROM ${DEPOSITS_DP10_TABLE}
+        sql: `SELECT * FROM ${DEPOSITS_DP10_TABLE}${whereClause}
           ORDER BY FECHA_NEGOCIACION DESC, NUMERO_CONTRATO ASC
           LIMIT ? OFFSET ?;`,
-        args: [limit, offset],
+        args: [...args, limit, offset],
     });
 
     const rows = dataResult.rows.map((row) => {

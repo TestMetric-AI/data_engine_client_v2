@@ -23,9 +23,34 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    // Extract filter parameters
+    const getValue = (key: string): string | undefined => {
+        const val = searchParams.get(key);
+        if (!val) return undefined;
+        const trimmed = val.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    const filters = {
+        NUMERO_CONTRATO: getValue("NUMERO_CONTRATO"),
+        NUM_PRODUCTO: getValue("NUM_PRODUCTO"),
+        ID_PRODUCTO: getValue("ID_PRODUCTO"),
+        ID_CUSTOMER: getValue("ID_CUSTOMER"),
+        MONEDA: getValue("MONEDA"),
+        PLAZO: getValue("PLAZO"),
+        ESTADO_PRODUCTO: getValue("ESTADO_PRODUCTO"),
+        FECHA_NEGOCIACION_HASTA: getValue("FECHA_NEGOCIACION_HASTA"),
+        FECHA_EFECTIVA_DESDE: getValue("FECHA_EFECTIVA_DESDE"),
+        FECHA_EFECTIVA_HASTA: getValue("FECHA_EFECTIVA_HASTA"),
+    };
+
+    // Check if any filter is provided
+    const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
+    const filtersToPass = hasAnyFilter ? filters : undefined;
+
     try {
         const offset = (page - 1) * pageSize;
-        const { rows, total } = await listDeposits(pageSize, offset);
+        const { rows, total } = await listDeposits(pageSize, offset, filtersToPass);
         const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
         return NextResponse.json({
