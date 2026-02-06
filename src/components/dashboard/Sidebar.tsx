@@ -44,6 +44,7 @@ const navSections: NavSection[] = [
     items: [
       { label: "Deposits", href: "/pipelines/deposits", icon: ChartIcon },
       { label: "Deposits Locked", href: "/pipelines/deposits-locked", icon: ChartIcon },
+      { label: "Interest Change", href: "/pipelines/deposits-interest-change", icon: ChartIcon },
       { label: "Client Exonerated", href: "/pipelines/client_exonerated", icon: ChartIcon },
     ],
   },
@@ -56,6 +57,7 @@ const navSections: NavSection[] = [
         subItems: [
           { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
           { label: "Deposits Locked", href: "/datasets/deposits_locked" },
+          { label: "Interest Change", href: "/datasets/deposits_interest_change" },
           { label: "Deposits Query", href: "/datasets/deposits_query" },
           { label: "Client Exonerated", href: "/datasets/client_exonerated" },
         ],
