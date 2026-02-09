@@ -177,6 +177,14 @@ export type DepositsParseResult = {
     errors: DepositsValidationError[];
 };
 
+export type ReductionStats = {
+    originalCount: number;
+    reducedCount: number;
+    categoriesTotal: number;
+    categoriesReduced: string[];
+    reductionPercentage: number;
+};
+
 const EMPTY_TO_NULL = (value: unknown) => {
     if (value === undefined || value === null) {
         return null;
@@ -333,6 +341,88 @@ export function parseDepositsCsv(buffer: Buffer): DepositsParseResult {
     return { rows: normalizedRows, errors };
 }
 
+/**
+ * Reduce dataset by category to manage large files
+ * Ensures all ID_PRODUCTO categories are represented
+ * Focuses reduction on categories with too many records
+ * @param rows Array of deposit rows
+ * @param maxPerCategory Maximum rows per category (default: 1000)
+ * @returns Reduced rows and statistics
+ */
+export function reduceDataByCategory(
+    rows: DepositsRow[],
+    maxPerCategory: number = 1000
+): { reducedRows: DepositsRow[]; stats: ReductionStats } {
+    const originalCount = rows.length;
+
+    // Group rows by ID_PRODUCTO
+    const categoriesMap = new Map<string, DepositsRow[]>();
+
+    rows.forEach(row => {
+        const category = String(row.ID_PRODUCTO ?? 'UNKNOWN');
+        if (!categoriesMap.has(category)) {
+            categoriesMap.set(category, []);
+        }
+        categoriesMap.get(category)!.push(row);
+    });
+
+    const categoriesReduced: string[] = [];
+    const reducedRows: DepositsRow[] = [];
+
+    // Process each category
+    categoriesMap.forEach((categoryRows, category) => {
+        if (categoryRows.length <= maxPerCategory) {
+            // Keep all rows for small categories
+            reducedRows.push(...categoryRows);
+        } else {
+            // Randomly sample for large categories
+            const sampled = randomSample(categoryRows, maxPerCategory);
+            reducedRows.push(...sampled);
+            categoriesReduced.push(category);
+        }
+    });
+
+    const reducedCount = reducedRows.length;
+    const reductionPercentage = originalCount > 0
+        ? Math.round(((originalCount - reducedCount) / originalCount) * 10000) / 100
+        : 0;
+
+    const stats: ReductionStats = {
+        originalCount,
+        reducedCount,
+        categoriesTotal: categoriesMap.size,
+        categoriesReduced,
+        reductionPercentage
+    };
+
+    // Log reduction details
+    if (categoriesReduced.length > 0) {
+        console.log(
+            `[DEPOSITS] Data reduced: ${originalCount} → ${reducedCount} rows (${reductionPercentage}% reduction)\n` +
+            `Categories total: ${categoriesMap.size}, Categories reduced: ${categoriesReduced.length}\n` +
+            `Reduced categories: ${categoriesReduced.join(', ')}`
+        );
+    }
+
+    return { reducedRows, stats };
+}
+
+/**
+ * Randomly sample n items from an array
+ * Uses Fisher-Yates shuffle algorithm
+ */
+function randomSample<T>(array: T[], n: number): T[] {
+    const result = [...array];
+    const sampleSize = Math.min(n, array.length);
+
+    for (let i = 0; i < sampleSize; i++) {
+        const j = i + Math.floor(Math.random() * (result.length - i));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result.slice(0, sampleSize);
+}
+
 function validateHeaders(headers: string[]): DepositsValidationError | null {
     if (headers.length !== DEPOSITS_DP10_COLUMNS.length) {
         return {
@@ -422,6 +512,36 @@ function validateRow(
     return errors;
 }
 
+/**
+ * Calculate safe batch size for SQLite inserts
+ * SQLite has a limit of 32,766 variables per statement
+ * @param columnCount Number of columns in the table
+ * @param preferredBatchSize Preferred batch size (default: 500)
+ * @returns Object with batchSize and wasReduced flag
+ */
+function calculateSafeBatchSize(
+    columnCount: number,
+    preferredBatchSize: number = 500
+): { batchSize: number; wasReduced: boolean } {
+    const SQLITE_MAX_VARIABLES = 32766;
+    const maxPossibleBatchSize = Math.floor(SQLITE_MAX_VARIABLES / columnCount);
+
+    // Add 10% safety margin
+    const safeBatchSize = Math.floor(maxPossibleBatchSize * 0.9);
+
+    if (preferredBatchSize > safeBatchSize) {
+        return {
+            batchSize: safeBatchSize,
+            wasReduced: true
+        };
+    }
+
+    return {
+        batchSize: preferredBatchSize,
+        wasReduced: false
+    };
+}
+
 export async function ensureDepositsTable(): Promise<void> {
     const tableColumns = [
         ...DEPOSITS_DP10_COLUMNS,
@@ -446,8 +566,20 @@ export async function insertDeposits(rows: DepositsRow[]): Promise<number> {
 
     await ensureDepositsTable();
 
-    const BATCH_SIZE = 500; // Insert 500 rows at a time
     const columnsSql = DEPOSITS_DP10_COLUMNS.map((col) => `"${col}"`).join(", ");
+
+    // Calculate safe batch size based on column count
+    const { batchSize: BATCH_SIZE, wasReduced } = calculateSafeBatchSize(
+        DEPOSITS_DP10_COLUMNS.length,
+        500 // Preferred batch size
+    );
+
+    if (wasReduced) {
+        console.warn(
+            `[DEPOSITS] Batch size reduced to ${BATCH_SIZE} rows to comply with SQLite's variable limit. ` +
+            `(${DEPOSITS_DP10_COLUMNS.length} columns × ${BATCH_SIZE} rows = ${DEPOSITS_DP10_COLUMNS.length * BATCH_SIZE} variables, max: 32,766)`
+        );
+    }
 
     const transaction = await turso.transaction("write");
 

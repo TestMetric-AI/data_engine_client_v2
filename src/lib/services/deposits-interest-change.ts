@@ -4,7 +4,8 @@ import { turso } from "@/lib/turso";
 
 export const DEPOSITS_INTEREST_CHANGE_TABLE = "deposits_interest_change";
 
-export const DEPOSITS_INTEREST_CHANGE_COLUMNS = [
+// CSV columns - these are the columns expected in the uploaded CSV file
+export const DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS = [
     "NUM_CERTIFICADO",
     "TASA_INTERES_ANTERIOR",
     "TASA_POOL_ANTERIOR",
@@ -12,6 +13,12 @@ export const DEPOSITS_INTEREST_CHANGE_COLUMNS = [
     "TASA_POOL_NUEVA",
     "FECHA_CAMBIO_TASA",
     "USUARIO_CAMBIO_TASA",
+];
+
+// Database columns - includes additional columns not in CSV
+export const DEPOSITS_INTEREST_CHANGE_TABLE_COLUMNS = [
+    ...DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS,
+    "INTEREST_TYPE",
 ];
 
 const DECIMAL_FIELDS = new Set([
@@ -57,7 +64,7 @@ const EMPTY_TO_NULL = (value: unknown) => {
 
 const depositsInterestChangeRowSchema: z.ZodType<DepositsInterestChangeRow> = z.object(
     Object.fromEntries(
-        DEPOSITS_INTEREST_CHANGE_COLUMNS.map((column) => {
+        DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.map((column) => {
             if (DECIMAL_FIELDS.has(column)) {
                 return [
                     column,
@@ -156,7 +163,7 @@ export function parseDepositsInterestChangeCsv(buffer: Buffer): DepositsInterest
 }
 
 function validateHeaders(headers: string[]): DepositsInterestChangeValidationError | null {
-    if (headers.length !== DEPOSITS_INTEREST_CHANGE_COLUMNS.length) {
+    if (headers.length !== DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.length) {
         return {
             row: 1,
             column: "HEADER",
@@ -165,8 +172,8 @@ function validateHeaders(headers: string[]): DepositsInterestChangeValidationErr
         };
     }
 
-    for (let i = 0; i < DEPOSITS_INTEREST_CHANGE_COLUMNS.length; i += 1) {
-        if (headers[i] !== DEPOSITS_INTEREST_CHANGE_COLUMNS[i]) {
+    for (let i = 0; i < DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.length; i += 1) {
+        if (headers[i] !== DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS[i]) {
             return {
                 row: 1,
                 column: "HEADER",
@@ -186,7 +193,7 @@ function validateRow(
 ): DepositsInterestChangeValidationError[] {
     const errors: DepositsInterestChangeValidationError[] = [];
 
-    for (const column of DEPOSITS_INTEREST_CHANGE_COLUMNS) {
+    for (const column of DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS) {
         const rawValue = row[column] ?? "";
         const value = rawValue.trim();
 
@@ -222,8 +229,62 @@ function validateRow(
     return errors;
 }
 
+async function ensureExtraColumns(): Promise<void> {
+    // Get existing columns from the table
+    const infoResult = await turso.execute(`PRAGMA table_info(${DEPOSITS_INTEREST_CHANGE_TABLE});`);
+    const existing = new Set<string>();
+
+    infoResult.rows.forEach(row => {
+        const nameIdx = infoResult.columns.indexOf("name");
+        if (typeof row[nameIdx] === 'string') {
+            existing.add(row[nameIdx] as string);
+        }
+    });
+
+    // Add INTEREST_TYPE column if it doesn't exist
+    if (!existing.has("INTEREST_TYPE")) {
+        try {
+            await turso.execute(
+                `ALTER TABLE ${DEPOSITS_INTEREST_CHANGE_TABLE} ADD COLUMN "INTEREST_TYPE" TEXT;`
+            );
+        } catch (e) {
+            // Ignore if column exists (race condition)
+        }
+    }
+}
+
+/**
+ * Calculate safe batch size for SQLite inserts
+ * SQLite has a limit of 32,766 variables per statement
+ * @param columnCount Number of columns in the table
+ * @param preferredBatchSize Preferred batch size (default: 500)
+ * @returns Object with batchSize and wasReduced flag
+ */
+function calculateSafeBatchSize(
+    columnCount: number,
+    preferredBatchSize: number = 500
+): { batchSize: number; wasReduced: boolean } {
+    const SQLITE_MAX_VARIABLES = 32766;
+    const maxPossibleBatchSize = Math.floor(SQLITE_MAX_VARIABLES / columnCount);
+
+    // Add 10% safety margin
+    const safeBatchSize = Math.floor(maxPossibleBatchSize * 0.9);
+
+    if (preferredBatchSize > safeBatchSize) {
+        return {
+            batchSize: safeBatchSize,
+            wasReduced: true
+        };
+    }
+
+    return {
+        batchSize: preferredBatchSize,
+        wasReduced: false
+    };
+}
+
 export async function ensureDepositsInterestChangeTable(): Promise<void> {
-    const columnDefs = DEPOSITS_INTEREST_CHANGE_COLUMNS
+    const columnDefs = DEPOSITS_INTEREST_CHANGE_TABLE_COLUMNS
         .map((column) => {
             const type = getColumnType(column);
             return `"${column}" ${type}`;
@@ -232,6 +293,7 @@ export async function ensureDepositsInterestChangeTable(): Promise<void> {
 
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_INTEREST_CHANGE_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
+    await ensureExtraColumns();
 }
 
 export async function insertDepositsInterestChange(rows: DepositsInterestChangeRow[]): Promise<number> {
@@ -241,8 +303,20 @@ export async function insertDepositsInterestChange(rows: DepositsInterestChangeR
 
     await ensureDepositsInterestChangeTable();
 
-    const BATCH_SIZE = 500; // Insert 500 rows at a time
-    const columnsSql = DEPOSITS_INTEREST_CHANGE_COLUMNS.map((col) => `"${col}"`).join(", ");
+    const columnsSql = DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.map((col) => `"${col}"`).join(", ");
+
+    // Calculate safe batch size based on column count
+    const { batchSize: BATCH_SIZE, wasReduced } = calculateSafeBatchSize(
+        DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.length,
+        500 // Preferred batch size
+    );
+
+    if (wasReduced) {
+        console.warn(
+            `[DEPOSITS_INTEREST_CHANGE] Batch size reduced to ${BATCH_SIZE} rows to comply with SQLite's variable limit. ` +
+            `(${DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.length} columns × ${BATCH_SIZE} rows = ${DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.length * BATCH_SIZE} variables, max: 32,766)`
+        );
+    }
 
     const transaction = await turso.transaction("write");
 
@@ -252,14 +326,14 @@ export async function insertDepositsInterestChange(rows: DepositsInterestChangeR
 
             // Create multi-row INSERT statement
             const placeholderRows = batch
-                .map(() => `(${DEPOSITS_INTEREST_CHANGE_COLUMNS.map(() => "?").join(", ")})`)
+                .map(() => `(${DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.map(() => "?").join(", ")})`)
                 .join(", ");
 
             const batchInsertSql = `INSERT INTO ${DEPOSITS_INTEREST_CHANGE_TABLE} (${columnsSql}) VALUES ${placeholderRows};`;
 
             // Flatten all values for the batch
             const batchValues = batch.flatMap((row) =>
-                DEPOSITS_INTEREST_CHANGE_COLUMNS.map((column) =>
+                DEPOSITS_INTEREST_CHANGE_CSV_COLUMNS.map((column) =>
                     normalizeValue(column, row[column] ?? "")
                 )
             );
@@ -291,6 +365,14 @@ export type DepositsInterestChangePage = {
 export type DepositsInterestChangePaginationFilters = {
     NUM_CERTIFICADO?: string;
     USUARIO_CAMBIO_TASA?: string;
+    INTEREST_TYPE?: string;
+    FECHA_CAMBIO_TASA_DESDE?: string;
+    FECHA_CAMBIO_TASA_HASTA?: string;
+};
+
+export type DepositsInterestChangeQueryFilters = {
+    NUM_CERTIFICADO?: string;
+    INTEREST_TYPE?: string;
     FECHA_CAMBIO_TASA_DESDE?: string;
     FECHA_CAMBIO_TASA_HASTA?: string;
 };
@@ -310,6 +392,7 @@ export async function listDepositsInterestChange(
         const exactFilters: Array<keyof DepositsInterestChangePaginationFilters> = [
             "NUM_CERTIFICADO",
             "USUARIO_CAMBIO_TASA",
+            "INTEREST_TYPE",
         ];
 
         for (const key of exactFilters) {
@@ -395,5 +478,67 @@ export async function getAllCertificateNumbers(): Promise<string[]> {
     });
 
     return result.rows.map((row) => String(row[0]));
+}
+
+export async function updateInterestTypeByCertificate(
+    numCertificado: string,
+    interestType: string
+): Promise<{ updated: boolean }> {
+    await ensureDepositsInterestChangeTable();
+
+    const result = await turso.execute({
+        sql: `UPDATE ${DEPOSITS_INTEREST_CHANGE_TABLE} SET "INTEREST_TYPE" = ? WHERE "NUM_CERTIFICADO" = ?;`,
+        args: [interestType, numCertificado],
+    });
+
+    return { updated: result.rowsAffected > 0 };
+}
+
+export async function findInterestChangeByFilters(
+    filters: DepositsInterestChangeQueryFilters
+): Promise<Record<string, unknown> | null> {
+    await ensureDepositsInterestChangeTable();
+
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    // Exact match filters
+    const exactFilters: Array<keyof DepositsInterestChangeQueryFilters> = [
+        "NUM_CERTIFICADO",
+        "INTEREST_TYPE",
+    ];
+
+    for (const key of exactFilters) {
+        const value = filters[key];
+        if (value) {
+            conditions.push(`"${key}" = ?`);
+            args.push(value);
+        }
+    }
+
+    // Date range filter
+    if (filters.FECHA_CAMBIO_TASA_DESDE && filters.FECHA_CAMBIO_TASA_HASTA) {
+        conditions.push(`"FECHA_CAMBIO_TASA" BETWEEN ? AND ?`);
+        args.push(filters.FECHA_CAMBIO_TASA_DESDE);
+        args.push(filters.FECHA_CAMBIO_TASA_HASTA);
+    }
+
+    const whereClause =
+        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const sql = `SELECT * FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereClause} LIMIT 1;`;
+
+    const result = await turso.execute({ sql, args });
+
+    if (result.rows.length === 0) return null;
+
+    // Convert row to record
+    const row = result.rows[0];
+    const record: Record<string, unknown> = {};
+    result.columns.forEach((col, idx) => {
+        record[col] = row[idx];
+    });
+
+    return record;
 }
 

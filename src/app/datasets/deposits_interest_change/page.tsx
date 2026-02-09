@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type QueryForm = {
     NUM_CERTIFICADO: string;
     USUARIO_CAMBIO_TASA: string;
+    INTEREST_TYPE: string;
     FECHA_CAMBIO_TASA_DESDE: string;
     FECHA_CAMBIO_TASA_HASTA: string;
 };
@@ -28,6 +29,7 @@ const pageSizes = [10, 25, 50, 100, 200, 500];
 const initialForm: QueryForm = {
     NUM_CERTIFICADO: "",
     USUARIO_CAMBIO_TASA: "",
+    INTEREST_TYPE: "",
     FECHA_CAMBIO_TASA_DESDE: "",
     FECHA_CAMBIO_TASA_HASTA: "",
 };
@@ -53,6 +55,7 @@ export default function DepositsInterestChangePage() {
     }> = [
             { key: "NUM_CERTIFICADO", label: "Numero de certificado" },
             { key: "USUARIO_CAMBIO_TASA", label: "Usuario" },
+            { key: "INTEREST_TYPE", label: "Interest Type" },
             {
                 key: "FECHA_CAMBIO_TASA_DESDE",
                 label: "Fecha cambio desde",

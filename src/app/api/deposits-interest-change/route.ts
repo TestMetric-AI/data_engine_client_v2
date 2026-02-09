@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
     const filters = {
         NUM_CERTIFICADO: getValue("NUM_CERTIFICADO"),
         USUARIO_CAMBIO_TASA: getValue("USUARIO_CAMBIO_TASA"),
+        INTEREST_TYPE: getValue("INTEREST_TYPE"),
         FECHA_CAMBIO_TASA_DESDE: getValue("FECHA_CAMBIO_TASA_DESDE"),
         FECHA_CAMBIO_TASA_HASTA: getValue("FECHA_CAMBIO_TASA_HASTA"),
     };

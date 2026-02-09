@@ -4,6 +4,8 @@ import {
     insertDeposits,
     listDeposits,
     parseDepositsCsv,
+    reduceDataByCategory,
+    ReductionStats,
 } from "@/lib/services/deposits";
 import { verifyApiAuth } from "@/lib/auth-helper";
 
@@ -82,6 +84,12 @@ export async function POST(request: NextRequest) {
         const overwriteRaw = request.nextUrl.searchParams.get("overwrite");
         const overwrite = overwriteRaw === "true" || overwriteRaw === "1";
 
+        // Extract reduction parameters
+        const reduceRaw = request.nextUrl.searchParams.get("reduce");
+        const shouldReduce = reduceRaw === "true" || reduceRaw === "1";
+        const maxPerCategoryRaw = request.nextUrl.searchParams.get("maxPerCategory");
+        const maxPerCategory = maxPerCategoryRaw ? Number(maxPerCategoryRaw) : 1000;
+
         if (!file) {
             return NextResponse.json(
                 { message: "Debe enviar un archivo CSV." },
@@ -110,16 +118,35 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Apply reduction if requested
+        let rowsToInsert = parseResult.rows;
+        let reductionStats: ReductionStats | null = null;
+
+        if (shouldReduce) {
+            const { reducedRows, stats } = reduceDataByCategory(rowsToInsert, maxPerCategory);
+            rowsToInsert = reducedRows;
+            reductionStats = stats;
+        }
+
         if (overwrite) {
             await clearDeposits();
         }
 
-        const inserted = await insertDeposits(parseResult.rows);
+        const inserted = await insertDeposits(rowsToInsert);
 
-        return NextResponse.json(
-            { message: "Archivo cargado correctamente.", inserted },
-            { status: 201 }
-        );
+        const response: any = {
+            message: "Archivo cargado correctamente.",
+            inserted
+        };
+
+        if (reductionStats) {
+            response.reduction = {
+                applied: true,
+                ...reductionStats
+            };
+        }
+
+        return NextResponse.json(response, { status: 201 });
     } catch (error) {
         console.error("Error uploading deposits:", error);
         return NextResponse.json(
