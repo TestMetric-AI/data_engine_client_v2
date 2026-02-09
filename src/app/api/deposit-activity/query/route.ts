@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findDepositActivityByFilters, DepositActivityQueryFilters } from "@/lib/services/deposit-activity";
+import { findDepositActivityByFilters, markDepositActivityUsedByRowId, DepositActivityQueryFilters } from "@/lib/services/deposit-activity";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -9,6 +9,15 @@ export async function GET(request: NextRequest) {
         if (!val) return undefined;
         const trimmed = val.trim();
         return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    const getBooleanValue = (key: string): boolean | undefined => {
+        const val = searchParams.get(key);
+        if (!val) return undefined;
+        const trimmed = val.trim().toLowerCase();
+        if (trimmed === "true" || trimmed === "1") return true;
+        if (trimmed === "false" || trimmed === "0") return false;
+        return undefined;
     };
 
     const filters: DepositActivityQueryFilters = {
@@ -21,7 +30,13 @@ export async function GET(request: NextRequest) {
         USUARIO_APROBADOR: getValue("USUARIO_APROBADOR"),
         FECHA_REGISTRO_DESDE: getValue("FECHA_REGISTRO_DESDE"),
         FECHA_REGISTRO_HASTA: getValue("FECHA_REGISTRO_HASTA"),
+        EXISTS: getBooleanValue("EXISTS"),
     };
+
+    // Debug: Log raw query params
+    console.log("[DEBUG ENDPOINT] Raw EXISTS param:", searchParams.get("EXISTS"));
+    console.log("[DEBUG ENDPOINT] Parsed EXISTS:", getBooleanValue("EXISTS"));
+    console.log("[DEBUG ENDPOINT] All params:", Object.fromEntries(searchParams.entries()));
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {
@@ -39,10 +54,24 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    // Check if user wants to mark record as used (default: true)
+    const shouldMarkUsed = getBooleanValue("USED") !== false; // true by default
+
     try {
         const result = await findDepositActivityByFilters(filters);
         if (!result) {
             return NextResponse.json({ message: "No se encontro ningun resultado." }, { status: 404 });
+        }
+
+        // Mark record as used only if USED parameter is not explicitly set to false
+        if (shouldMarkUsed) {
+            const rowId = result.__rowid;
+            if (rowId !== undefined && rowId !== null && typeof rowId === 'number') {
+                await markDepositActivityUsedByRowId(rowId);
+                const timesUsed = Number(result.TIMES_USED ?? 0);
+                result.USED = 1;
+                result.TIMES_USED = timesUsed + 1;
+            }
         }
 
         const { __rowid, ...rest } = result;

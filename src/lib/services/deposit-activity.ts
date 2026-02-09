@@ -4,7 +4,8 @@ import { turso } from "@/lib/turso";
 
 export const DEPOSIT_ACTIVITY_TABLE = "deposit_activity";
 
-export const DEPOSIT_ACTIVITY_COLUMNS = [
+// CSV columns (what we expect in the uploaded file)
+export const DEPOSIT_ACTIVITY_CSV_COLUMNS = [
     "NUM_CERTIFICADO",
     "REFERENCIA",
     "FECHA_REGISTRO",
@@ -16,6 +17,14 @@ export const DEPOSIT_ACTIVITY_COLUMNS = [
     "USUARIO_APROBADOR",
     "FECHA_APROBACION",
     "MONTO",
+];
+
+// Database columns (includes tracking columns)
+export const DEPOSIT_ACTIVITY_COLUMNS = [
+    ...DEPOSIT_ACTIVITY_CSV_COLUMNS,
+    "USED",
+    "TIMES_USED",
+    "EXISTS",
 ];
 
 export type DepositActivityRow = Record<string, string | null>;
@@ -60,6 +69,8 @@ const DepositActivityRowSchema = z.object({
     USUARIO_APROBADOR: z.string().nullable().transform(EMPTY_TO_NULL),
     FECHA_APROBACION: z.string().nullable().transform(EMPTY_TO_NULL),
     MONTO: z.string().nullable().transform(EMPTY_TO_NULL),
+    USED: z.string().nullable().transform(EMPTY_TO_NULL).optional(),
+    TIMES_USED: z.string().nullable().transform(EMPTY_TO_NULL).optional(),
 });
 
 /**
@@ -144,7 +155,7 @@ function splitMultiValueRow(row: Record<string, string>): Record<string, string>
     let maxValues = 1;
     const columnValues: Record<string, string[]> = {};
 
-    DEPOSIT_ACTIVITY_COLUMNS.forEach(col => {
+    DEPOSIT_ACTIVITY_CSV_COLUMNS.forEach(col => {
         const value = row[col] || "";
         const values = value.split("]");
         columnValues[col] = values;
@@ -155,7 +166,7 @@ function splitMultiValueRow(row: Record<string, string>): Record<string, string>
     const result: Record<string, string>[] = [];
     for (let i = 0; i < maxValues; i++) {
         const newRow: Record<string, string> = {};
-        DEPOSIT_ACTIVITY_COLUMNS.forEach(col => {
+        DEPOSIT_ACTIVITY_CSV_COLUMNS.forEach(col => {
             // Use the i-th value if it exists, otherwise use the last value or empty string
             const values = columnValues[col];
             newRow[col] = values[i] !== undefined ? values[i] : (values[values.length - 1] || "");
@@ -167,7 +178,7 @@ function splitMultiValueRow(row: Record<string, string>): Record<string, string>
 }
 
 function validateHeaders(headers: string[]): DepositActivityValidationError | null {
-    if (headers.length !== DEPOSIT_ACTIVITY_COLUMNS.length) {
+    if (headers.length !== DEPOSIT_ACTIVITY_CSV_COLUMNS.length) {
         return {
             row: 1,
             column: "HEADER",
@@ -177,12 +188,12 @@ function validateHeaders(headers: string[]): DepositActivityValidationError | nu
     }
 
     for (let i = 0; i < headers.length; i++) {
-        if (headers[i] !== DEPOSIT_ACTIVITY_COLUMNS[i]) {
+        if (headers[i] !== DEPOSIT_ACTIVITY_CSV_COLUMNS[i]) {
             return {
                 row: 1,
                 column: headers[i],
                 value: headers[i],
-                message: `Columna esperada: ${DEPOSIT_ACTIVITY_COLUMNS[i]}, recibida: ${headers[i]}`,
+                message: `Columna esperada: ${DEPOSIT_ACTIVITY_CSV_COLUMNS[i]}, recibida: ${headers[i]}`,
             };
         }
     }
@@ -217,7 +228,15 @@ function calculateSafeBatchSize(
 }
 
 function getColumnType(column: string): string {
-    // All columns are TEXT for now
+    if (column === "USED") {
+        return "INTEGER DEFAULT 0";
+    }
+    if (column === "TIMES_USED") {
+        return "INTEGER DEFAULT 0";
+    }
+    if (column === "EXISTS") {
+        return "INTEGER DEFAULT 0";
+    }
     return "TEXT";
 }
 
@@ -239,6 +258,25 @@ export async function ensureDepositActivityTable(): Promise<void> {
 
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSIT_ACTIVITY_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
+
+    // Migration: Add USED and TIMES_USED columns if they don't exist
+    try {
+        await turso.execute(`ALTER TABLE ${DEPOSIT_ACTIVITY_TABLE} ADD COLUMN "USED" INTEGER DEFAULT 0;`);
+    } catch (error) {
+        // Column already exists, ignore error
+    }
+
+    try {
+        await turso.execute(`ALTER TABLE ${DEPOSIT_ACTIVITY_TABLE} ADD COLUMN "TIMES_USED" INTEGER DEFAULT 0;`);
+    } catch (error) {
+        // Column already exists, ignore error
+    }
+
+    try {
+        await turso.execute(`ALTER TABLE ${DEPOSIT_ACTIVITY_TABLE} ADD COLUMN "EXISTS" INTEGER DEFAULT 0;`);
+    } catch (error) {
+        // Column already exists, ignore error
+    }
 }
 
 export async function insertDepositActivity(rows: DepositActivityRow[]): Promise<number> {
@@ -300,6 +338,68 @@ export async function insertDepositActivity(rows: DepositActivityRow[]): Promise
 export async function clearDepositActivity(): Promise<void> {
     await ensureDepositActivityTable();
     await turso.execute(`DELETE FROM ${DEPOSIT_ACTIVITY_TABLE};`);
+}
+
+/**
+ * Mark a deposit activity record as used by its rowid
+ */
+export async function markDepositActivityUsedByRowId(rowId: number): Promise<void> {
+    await ensureDepositActivityTable();
+
+    const sql = `
+        UPDATE ${DEPOSIT_ACTIVITY_TABLE}
+        SET "USED" = 1,
+            "TIMES_USED" = COALESCE("TIMES_USED", 0) + 1
+        WHERE rowid = ?;
+    `;
+
+    console.log("[DEBUG MARK USED] Marking rowid:", rowId);
+    const result = await turso.execute({
+        sql,
+        args: [rowId],
+    });
+    console.log("[DEBUG MARK USED] Rows affected:", result.rowsAffected);
+}
+
+/**
+ * Update EXISTS field for a deposit activity record by NUM_CERTIFICADO
+ */
+export async function updateDepositActivityExists(
+    numCertificado: string,
+    exists: boolean
+): Promise<{ updated: number }> {
+    await ensureDepositActivityTable();
+
+    const sql = `
+        UPDATE ${DEPOSIT_ACTIVITY_TABLE}
+        SET "EXISTS" = ?
+        WHERE "NUM_CERTIFICADO" = ?;
+    `;
+
+    const result = await turso.execute({
+        sql,
+        args: [exists ? 1 : 0, numCertificado],
+    });
+
+    return { updated: result.rowsAffected };
+}
+
+/**
+ * Get all NUM_CERTIFICADO values from deposit_activity
+ */
+export async function getAllCertificateNumbers(): Promise<string[]> {
+    await ensureDepositActivityTable();
+
+    const sql = `
+        SELECT DISTINCT "NUM_CERTIFICADO"
+        FROM ${DEPOSIT_ACTIVITY_TABLE}
+        WHERE "NUM_CERTIFICADO" IS NOT NULL
+        ORDER BY "NUM_CERTIFICADO";
+    `;
+
+    const result = await turso.execute(sql);
+
+    return result.rows.map(row => String(row[0])).filter(Boolean);
 }
 
 export type DepositActivityListFilters = {
@@ -368,11 +468,12 @@ export type DepositActivityQueryFilters = {
     USUARIO_APROBADOR?: string;
     FECHA_REGISTRO_DESDE?: string;
     FECHA_REGISTRO_HASTA?: string;
+    EXISTS?: boolean;
 };
 
 /**
  * Query deposit activity by filters
- * Returns the first matching record
+ * Returns the first matching UNUSED record
  */
 export async function findDepositActivityByFilters(
     filters: DepositActivityQueryFilters
@@ -381,6 +482,9 @@ export async function findDepositActivityByFilters(
 
     const conditions: string[] = [];
     const args: any[] = [];
+
+    // CRITICAL: Only return unused records
+    conditions.push(`("USED" IS NULL OR "USED" = 0)`);
 
     const exactFilters: Array<keyof DepositActivityQueryFilters> = [
         "NUM_CERTIFICADO",
@@ -406,11 +510,23 @@ export async function findDepositActivityByFilters(
         args.push(filters.FECHA_REGISTRO_HASTA);
     }
 
-    const whereClause =
-        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    // Filter by EXISTS if provided
+    if (filters.EXISTS !== undefined) {
+        conditions.push(`"EXISTS" = ?`);
+        args.push(filters.EXISTS ? 1 : 0);
+    }
+
+    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} LIMIT 1;`;
 
+    // Debug logging
+    console.log("[DEBUG] Query SQL:", sql);
+    console.log("[DEBUG] Query Args:", args);
+    console.log("[DEBUG] Filters:", filters);
+
     const result = await turso.execute({ sql, args });
+
+    console.log("[DEBUG] Result rows count:", result.rows.length);
 
     if (result.rows.length === 0) return null;
 
@@ -420,6 +536,8 @@ export async function findDepositActivityByFilters(
     result.columns.forEach((col, idx) => {
         record[col] = row[idx];
     });
+
+    console.log("[DEBUG QUERY RESULT] USED:", record.USED, "TIMES_USED:", record.TIMES_USED, "rowid:", record.__rowid);
 
     return record as (Record<string, unknown> & { __rowid?: number | null });
 }

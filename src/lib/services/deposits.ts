@@ -643,6 +643,9 @@ export async function findDepositByFilters(
     const conditions: string[] = [];
     const args: any[] = [];
 
+    // CRITICAL: Only return unused records
+    conditions.push(`(USED IS NULL OR USED = 0)`);
+
     const exactFilters: Array<keyof DepositsQueryFilters> = [
         "NUMERO_CONTRATO",
         "NUM_PRODUCTO",
@@ -672,11 +675,15 @@ export async function findDepositByFilters(
         args.push(filters.FECHA_EFECTIVA_HASTA);
     }
 
-    const whereClause =
-        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_DP10_TABLE}${whereClause} LIMIT 1;`;
 
+    console.log("[DEBUG DEPOSITS QUERY] SQL:", sql);
+    console.log("[DEBUG DEPOSITS QUERY] Args:", args);
+
     const result = await turso.execute({ sql, args });
+
+    console.log("[DEBUG DEPOSITS QUERY] Result rows count:", result.rows.length);
 
     if (result.rows.length === 0) return null;
 
@@ -687,18 +694,22 @@ export async function findDepositByFilters(
         record[col] = row[idx];
     });
 
+    console.log("[DEBUG DEPOSITS QUERY RESULT] USED:", record.USED, "TIMES_USED:", record.TIMES_USED, "rowid:", record.__rowid);
+
     return record as (Record<string, unknown> & { __rowid?: number | null });
 }
 
 export async function markDepositUsedByRowId(rowId: number): Promise<void> {
     await ensureDepositsTable();
-    await turso.execute({
+    console.log("[DEBUG MARK USED - DEPOSITS] Marking rowid:", rowId);
+    const result = await turso.execute({
         sql: `UPDATE ${DEPOSITS_DP10_TABLE}
           SET USED = 1,
               TIMES_USED = COALESCE(TIMES_USED, 0) + 1
           WHERE rowid = ?;`,
         args: [rowId],
     });
+    console.log("[DEBUG MARK USED - DEPOSITS] Rows affected:", result.rowsAffected);
 }
 
 export type DepositsPage = {

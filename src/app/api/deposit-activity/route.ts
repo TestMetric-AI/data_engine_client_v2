@@ -61,6 +61,52 @@ export async function GET(request: NextRequest) {
     }
 }
 
+export async function PATCH(request: NextRequest) {
+    if (!(await verifyApiAuth(request))) {
+        return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    try {
+        const body = await request.json();
+        const { NUM_CERTIFICADO, EXISTS } = body;
+
+        if (!NUM_CERTIFICADO) {
+            return NextResponse.json(
+                { message: "NUM_CERTIFICADO es requerido." },
+                { status: 400 }
+            );
+        }
+
+        if (typeof EXISTS !== "boolean") {
+            return NextResponse.json(
+                { message: "EXISTS debe ser un valor booleano (true/false)." },
+                { status: 400 }
+            );
+        }
+
+        const { updateDepositActivityExists } = await import("@/lib/services/deposit-activity");
+        const result = await updateDepositActivityExists(NUM_CERTIFICADO, EXISTS);
+
+        if (result.updated === 0) {
+            return NextResponse.json(
+                { message: "No se encontro ningun registro con ese NUM_CERTIFICADO." },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({
+            message: "EXISTS actualizado correctamente.",
+            updated: result.updated,
+        });
+    } catch (error) {
+        console.error("Error updating deposit activity EXISTS:", error);
+        return NextResponse.json(
+            { message: "Error interno del servidor." },
+            { status: 500 }
+        );
+    }
+}
+
 export async function POST(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
         return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
