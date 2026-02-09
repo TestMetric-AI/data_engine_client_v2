@@ -302,20 +302,49 @@ export async function clearDepositActivity(): Promise<void> {
     await turso.execute(`DELETE FROM ${DEPOSIT_ACTIVITY_TABLE};`);
 }
 
+export type DepositActivityListFilters = {
+    NUM_CERTIFICADO?: string;
+    ESTADO?: string;
+    ID?: string;
+};
+
 export async function listDepositActivity(
     limit: number,
-    offset: number
+    offset: number,
+    filters?: DepositActivityListFilters
 ): Promise<DepositActivityPage> {
     await ensureDepositActivityTable();
 
-    const countResult = await turso.execute(
-        `SELECT COUNT(*) as count FROM ${DEPOSIT_ACTIVITY_TABLE};`
-    );
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    // Apply filters if provided
+    if (filters) {
+        if (filters.NUM_CERTIFICADO) {
+            conditions.push(`"NUM_CERTIFICADO" = ?`);
+            args.push(filters.NUM_CERTIFICADO);
+        }
+        if (filters.ESTADO) {
+            conditions.push(`"ESTADO" = ?`);
+            args.push(filters.ESTADO);
+        }
+        if (filters.ID) {
+            conditions.push(`"ID" = ?`);
+            args.push(filters.ID);
+        }
+    }
+
+    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const countResult = await turso.execute({
+        sql: `SELECT COUNT(*) as count FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause};`,
+        args: args,
+    });
     const total = Number(countResult.rows[0]?.count ?? 0);
 
     const dataResult = await turso.execute({
-        sql: `SELECT * FROM ${DEPOSIT_ACTIVITY_TABLE} ORDER BY FECHA_REGISTRO DESC LIMIT ? OFFSET ?;`,
-        args: [limit, offset],
+        sql: `SELECT * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} ORDER BY FECHA_REGISTRO DESC LIMIT ? OFFSET ?;`,
+        args: [...args, limit, offset],
     });
 
     const rows = dataResult.rows.map((row) => {
@@ -328,3 +357,70 @@ export async function listDepositActivity(
 
     return { rows, total };
 }
+
+export type DepositActivityQueryFilters = {
+    NUM_CERTIFICADO?: string;
+    REFERENCIA?: string;
+    TIPO?: string;
+    ID?: string;
+    ESTADO?: string;
+    USUARIO_CREADOR?: string;
+    USUARIO_APROBADOR?: string;
+    FECHA_REGISTRO_DESDE?: string;
+    FECHA_REGISTRO_HASTA?: string;
+};
+
+/**
+ * Query deposit activity by filters
+ * Returns the first matching record
+ */
+export async function findDepositActivityByFilters(
+    filters: DepositActivityQueryFilters
+): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
+    await ensureDepositActivityTable();
+
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    const exactFilters: Array<keyof DepositActivityQueryFilters> = [
+        "NUM_CERTIFICADO",
+        "REFERENCIA",
+        "TIPO",
+        "ID",
+        "ESTADO",
+        "USUARIO_CREADOR",
+        "USUARIO_APROBADOR",
+    ];
+
+    for (const key of exactFilters) {
+        const value = filters[key];
+        if (value) {
+            conditions.push(`"${key}" = ?`);
+            args.push(value);
+        }
+    }
+
+    if (filters.FECHA_REGISTRO_DESDE && filters.FECHA_REGISTRO_HASTA) {
+        conditions.push(`"FECHA_REGISTRO" BETWEEN ? AND ?`);
+        args.push(filters.FECHA_REGISTRO_DESDE);
+        args.push(filters.FECHA_REGISTRO_HASTA);
+    }
+
+    const whereClause =
+        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} LIMIT 1;`;
+
+    const result = await turso.execute({ sql, args });
+
+    if (result.rows.length === 0) return null;
+
+    // Convert row to record
+    const row = result.rows[0];
+    const record: Record<string, unknown> = {};
+    result.columns.forEach((col, idx) => {
+        record[col] = row[idx];
+    });
+
+    return record as (Record<string, unknown> & { __rowid?: number | null });
+}
+

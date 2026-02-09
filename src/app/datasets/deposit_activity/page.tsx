@@ -17,7 +17,19 @@ type DepositActivityResponse = {
     pagination: Pagination;
 };
 
+type FilterForm = {
+    NUM_CERTIFICADO: string;
+    ESTADO: string;
+    ID: string;
+};
+
 const pageSizes = [10, 25, 50, 100, 200];
+
+const initialForm: FilterForm = {
+    NUM_CERTIFICADO: "",
+    ESTADO: "",
+    ID: "",
+};
 
 export default function DepositActivityDatasetPage() {
     const [rows, setRows] = useState<DepositActivityRow[]>([]);
@@ -30,6 +42,19 @@ export default function DepositActivityDatasetPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
+    const [form, setForm] = useState<FilterForm>(initialForm);
+    const [showFilters, setShowFilters] = useState(false);
+
+    function handleFilterChange(key: keyof FilterForm, value: string) {
+        setForm((prev) => ({ ...prev, [key]: value }));
+    }
+
+    function clearFilters() {
+        setForm(initialForm);
+        setPagination((prev) => ({ ...prev, page: 1 }));
+    }
+
+    const hasAnyFilter = Object.values(form).some((value) => value.trim() !== "");
 
     useEffect(() => {
         let isMounted = true;
@@ -40,6 +65,14 @@ export default function DepositActivityDatasetPage() {
                 const params = new URLSearchParams({
                     page: String(pagination.page),
                     pageSize: String(pagination.pageSize),
+                });
+
+                // Add filter parameters if any are set
+                (Object.keys(form) as (keyof FilterForm)[]).forEach((key) => {
+                    const value = form[key].trim();
+                    if (value) {
+                        params.set(key, value);
+                    }
                 });
 
                 const response = await fetch(`/api/deposit-activity?${params.toString()}`);
@@ -70,7 +103,7 @@ export default function DepositActivityDatasetPage() {
         return () => {
             isMounted = false;
         };
-    }, [pagination.page, pagination.pageSize]);
+    }, [pagination.page, pagination.pageSize, form]);
 
     const filteredRows = useMemo(() => {
         const normalized = search.trim().toLowerCase();
@@ -144,6 +177,85 @@ export default function DepositActivityDatasetPage() {
                 </div>
             </div>
 
+            {/* Filter Section */}
+            <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                            Filtros
+                        </p>
+                        <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">
+                            Parametros de busqueda
+                        </h2>
+                    </div>
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-text-secondary hover:border-primary transition-colors"
+                    >
+                        {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+                    </button>
+                </div>
+
+                {showFilters && (
+                    <>
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <label className="flex flex-col gap-2 text-xs">
+                                <span className="font-semibold text-text-secondary">NUM_CERTIFICADO</span>
+                                <input
+                                    type="text"
+                                    value={form.NUM_CERTIFICADO}
+                                    onChange={(event) => handleFilterChange("NUM_CERTIFICADO", event.target.value)}
+                                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
+                                    placeholder="Ej: AA25280N8YC1"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-2 text-xs">
+                                <span className="font-semibold text-text-secondary">ESTADO</span>
+                                <input
+                                    type="text"
+                                    value={form.ESTADO}
+                                    onChange={(event) => handleFilterChange("ESTADO", event.target.value)}
+                                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
+                                    placeholder="Ej: APROBADO"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-2 text-xs">
+                                <span className="font-semibold text-text-secondary">ID</span>
+                                <input
+                                    type="text"
+                                    value={form.ID}
+                                    onChange={(event) => handleFilterChange("ID", event.target.value)}
+                                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
+                                    placeholder="Ej: 12345"
+                                />
+                            </label>
+                        </div>
+
+                        <div className="mt-6 flex flex-wrap items-center gap-3">
+                            <button
+                                onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))}
+                                disabled={!hasAnyFilter}
+                                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
+                            >
+                                Aplicar filtros
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-text-secondary hover:border-primary"
+                            >
+                                Limpiar filtros
+                            </button>
+                            {hasAnyFilter && (
+                                <span className="text-xs text-text-secondary">
+                                    {Object.values(form).filter(v => v.trim() !== "").length} filtro(s) activo(s)
+                                </span>
+                            )}
+                        </div>
+                    </>
+                )}
+            </div>
+
             <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-sm text-text-secondary">
@@ -193,8 +305,8 @@ export default function DepositActivityDatasetPage() {
                                             setPagination((prev) => ({ ...prev, page }))
                                         }
                                         className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                            ? "bg-primary text-white"
-                                            : "border border-border bg-card text-text-secondary"
+                                                ? "bg-primary text-white"
+                                                : "border border-border bg-card text-text-secondary"
                                             }`}
                                     >
                                         {page}
@@ -299,8 +411,8 @@ export default function DepositActivityDatasetPage() {
                                 type="button"
                                 onClick={() => setPagination((prev) => ({ ...prev, page }))}
                                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                    ? "bg-primary text-white"
-                                    : "border border-border bg-card text-text-secondary"
+                                        ? "bg-primary text-white"
+                                        : "border border-border bg-card text-text-secondary"
                                     }`}
                             >
                                 {page}

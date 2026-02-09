@@ -4,6 +4,7 @@ import {
     insertDepositActivity,
     listDepositActivity,
     parseDepositActivityCsv,
+    DepositActivityListFilters,
 } from "@/lib/services/deposit-activity";
 import { verifyApiAuth } from "@/lib/auth-helper";
 
@@ -23,9 +24,23 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    // Extract filters
+    const filters: DepositActivityListFilters = {};
+    const numCertificado = searchParams.get("NUM_CERTIFICADO");
+    const estado = searchParams.get("ESTADO");
+    const id = searchParams.get("ID");
+
+    if (numCertificado) filters.NUM_CERTIFICADO = numCertificado;
+    if (estado) filters.ESTADO = estado;
+    if (id) filters.ID = id;
+
     try {
         const offset = (page - 1) * pageSize;
-        const { rows, total } = await listDepositActivity(pageSize, offset);
+        const { rows, total } = await listDepositActivity(
+            pageSize,
+            offset,
+            Object.keys(filters).length > 0 ? filters : undefined
+        );
         const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
         return NextResponse.json({
