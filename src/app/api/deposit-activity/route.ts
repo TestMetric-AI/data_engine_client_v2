@@ -29,10 +29,15 @@ export async function GET(request: NextRequest) {
     const numCertificado = searchParams.get("NUM_CERTIFICADO");
     const estado = searchParams.get("ESTADO");
     const id = searchParams.get("ID");
+    const existsParam = searchParams.get("EXISTS");
 
     if (numCertificado) filters.NUM_CERTIFICADO = numCertificado;
     if (estado) filters.ESTADO = estado;
     if (id) filters.ID = id;
+    if (existsParam !== null) {
+        // Convert string to boolean
+        filters.EXISTS = existsParam === "true" || existsParam === "1";
+    }
 
     try {
         const offset = (page - 1) * pageSize;

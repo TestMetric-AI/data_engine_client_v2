@@ -21,6 +21,7 @@ type FilterForm = {
     NUM_CERTIFICADO: string;
     ESTADO: string;
     ID: string;
+    EXISTS: string;
 };
 
 const pageSizes = [10, 25, 50, 100, 200];
@@ -29,6 +30,7 @@ const initialForm: FilterForm = {
     NUM_CERTIFICADO: "",
     ESTADO: "",
     ID: "",
+    EXISTS: "",
 };
 
 export default function DepositActivityDatasetPage() {
@@ -71,7 +73,12 @@ export default function DepositActivityDatasetPage() {
                 (Object.keys(form) as (keyof FilterForm)[]).forEach((key) => {
                     const value = form[key].trim();
                     if (value) {
-                        params.set(key, value);
+                        // For EXISTS, convert to boolean string
+                        if (key === "EXISTS") {
+                            params.set(key, value === "true" ? "true" : "false");
+                        } else {
+                            params.set(key, value);
+                        }
                     }
                 });
 
@@ -229,6 +236,18 @@ export default function DepositActivityDatasetPage() {
                                     placeholder="Ej: 12345"
                                 />
                             </label>
+                            <label className="flex flex-col gap-2 text-xs">
+                                <span className="font-semibold text-text-secondary">EXISTS</span>
+                                <select
+                                    value={form.EXISTS}
+                                    onChange={(event) => handleFilterChange("EXISTS", event.target.value)}
+                                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="true">Existe (true)</option>
+                                    <option value="false">No existe (false)</option>
+                                </select>
+                            </label>
                         </div>
 
                         <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -305,8 +324,8 @@ export default function DepositActivityDatasetPage() {
                                             setPagination((prev) => ({ ...prev, page }))
                                         }
                                         className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                                ? "bg-primary text-white"
-                                                : "border border-border bg-card text-text-secondary"
+                                            ? "bg-primary text-white"
+                                            : "border border-border bg-card text-text-secondary"
                                             }`}
                                     >
                                         {page}
@@ -411,8 +430,8 @@ export default function DepositActivityDatasetPage() {
                                 type="button"
                                 onClick={() => setPagination((prev) => ({ ...prev, page }))}
                                 className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                                        ? "bg-primary text-white"
-                                        : "border border-border bg-card text-text-secondary"
+                                    ? "bg-primary text-white"
+                                    : "border border-border bg-card text-text-secondary"
                                     }`}
                             >
                                 {page}

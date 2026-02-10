@@ -475,6 +475,7 @@ export type DepositActivityListFilters = {
     NUM_CERTIFICADO?: string;
     ESTADO?: string;
     ID?: string;
+    EXISTS?: boolean;
 };
 
 export async function listDepositActivity(
@@ -500,6 +501,10 @@ export async function listDepositActivity(
         if (filters.ID) {
             conditions.push(`"ID" = ?`);
             args.push(filters.ID);
+        }
+        if (filters.EXISTS !== undefined) {
+            conditions.push(`"EXISTS" = ?`);
+            args.push(filters.EXISTS ? 1 : 0);
         }
     }
 
