@@ -384,6 +384,75 @@ export async function updateDepositActivityExists(
     return { updated: result.rowsAffected };
 }
 
+export type BulkUpdateActivityResult = {
+    updated: number;
+    notFound: Array<{ NUM_CERTIFICADO: string; reason: string }>;
+    errors: Array<{ NUM_CERTIFICADO: string; error: string }>;
+};
+
+/**
+ * Bulk update EXISTS field for multiple deposit activity records from CSV data
+ * Continues updating valid records even if some fail
+ * @param updates Array of {NUM_CERTIFICADO, EXISTS} objects
+ * @returns Object with counts of updated, notFound, and errors
+ */
+export async function bulkUpdateDepositActivityExists(
+    updates: Array<{ NUM_CERTIFICADO: string; EXISTS: boolean }>
+): Promise<BulkUpdateActivityResult> {
+    await ensureDepositActivityTable();
+
+    const result: BulkUpdateActivityResult = {
+        updated: 0,
+        notFound: [],
+        errors: [],
+    };
+
+    // Process each update individually (no transaction - partial updates allowed)
+    for (const update of updates) {
+        try {
+            const { NUM_CERTIFICADO, EXISTS } = update;
+
+            // Check if certificate exists
+            const checkResult = await turso.execute({
+                sql: `SELECT COUNT(*) as count FROM ${DEPOSIT_ACTIVITY_TABLE} WHERE "NUM_CERTIFICADO" = ?;`,
+                args: [NUM_CERTIFICADO],
+            });
+
+            const count = Number(checkResult.rows[0]?.[0] ?? 0);
+
+            if (count === 0) {
+                result.notFound.push({
+                    NUM_CERTIFICADO,
+                    reason: "Certificate not found",
+                });
+                continue;
+            }
+
+            // Update the record
+            const updateResult = await turso.execute({
+                sql: `UPDATE ${DEPOSIT_ACTIVITY_TABLE} SET "EXISTS" = ? WHERE "NUM_CERTIFICADO" = ?;`,
+                args: [EXISTS ? 1 : 0, NUM_CERTIFICADO],
+            });
+
+            if (updateResult.rowsAffected > 0) {
+                result.updated += updateResult.rowsAffected;
+            } else {
+                result.notFound.push({
+                    NUM_CERTIFICADO,
+                    reason: "Update failed - no rows affected",
+                });
+            }
+        } catch (error) {
+            result.errors.push({
+                NUM_CERTIFICADO: update.NUM_CERTIFICADO,
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+
+    return result;
+}
+
 /**
  * Get all NUM_CERTIFICADO values from deposit_activity
  */
