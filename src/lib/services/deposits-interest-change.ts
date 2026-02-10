@@ -494,6 +494,75 @@ export async function updateInterestTypeByCertificate(
     return { updated: result.rowsAffected > 0 };
 }
 
+export type BulkUpdateInterestResult = {
+    updated: number;
+    notFound: Array<{ NUM_CERTIFICADO: string; reason: string }>;
+    errors: Array<{ NUM_CERTIFICADO: string; error: string }>;
+};
+
+/**
+ * Bulk update INTEREST_TYPE field for multiple certificates from CSV data
+ * Continues updating valid records even if some fail
+ * @param updates Array of {NUM_CERTIFICADO, INTEREST_TYPE} objects
+ * @returns Object with counts of updated, notFound, and errors
+ */
+export async function bulkUpdateInterestTypeByCertificate(
+    updates: Array<{ NUM_CERTIFICADO: string; INTEREST_TYPE: string }>
+): Promise<BulkUpdateInterestResult> {
+    await ensureDepositsInterestChangeTable();
+
+    const result: BulkUpdateInterestResult = {
+        updated: 0,
+        notFound: [],
+        errors: [],
+    };
+
+    // Process each update individually (no transaction - partial updates allowed)
+    for (const update of updates) {
+        try {
+            const { NUM_CERTIFICADO, INTEREST_TYPE } = update;
+
+            // Check if certificate exists
+            const checkResult = await turso.execute({
+                sql: `SELECT COUNT(*) as count FROM ${DEPOSITS_INTEREST_CHANGE_TABLE} WHERE "NUM_CERTIFICADO" = ?;`,
+                args: [NUM_CERTIFICADO],
+            });
+
+            const count = Number(checkResult.rows[0]?.[0] ?? 0);
+
+            if (count === 0) {
+                result.notFound.push({
+                    NUM_CERTIFICADO,
+                    reason: "Certificate not found",
+                });
+                continue;
+            }
+
+            // Update the record
+            const updateResult = await turso.execute({
+                sql: `UPDATE ${DEPOSITS_INTEREST_CHANGE_TABLE} SET "INTEREST_TYPE" = ? WHERE "NUM_CERTIFICADO" = ?;`,
+                args: [INTEREST_TYPE, NUM_CERTIFICADO],
+            });
+
+            if (updateResult.rowsAffected > 0) {
+                result.updated += updateResult.rowsAffected;
+            } else {
+                result.notFound.push({
+                    NUM_CERTIFICADO,
+                    reason: "Update failed - no rows affected",
+                });
+            }
+        } catch (error) {
+            result.errors.push({
+                NUM_CERTIFICADO: update.NUM_CERTIFICADO,
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+
+    return result;
+}
+
 export async function findInterestChangeByFilters(
     filters: DepositsInterestChangeQueryFilters
 ): Promise<Record<string, unknown> | null> {
