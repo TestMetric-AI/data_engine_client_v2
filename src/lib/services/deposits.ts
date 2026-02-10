@@ -891,5 +891,73 @@ export async function updateExoneratedStatus(): Promise<number> {
     return result.rowsAffected;
 }
 
+export type BulkUpdateResult = {
+    updated: number;
+    notFound: Array<{ ID_CUSTOMER: string; reason: string }>;
+    errors: Array<{ ID_CUSTOMER: string; error: string }>;
+};
+
+/**
+ * Bulk update LEGAL_ID and LEGAL_DOC fields for multiple customers from CSV data
+ * Continues updating valid records even if some fail
+ * @param updates Array of {ID_CUSTOMER, LEGAL_ID, LEGAL_DOC} objects
+ * @returns Object with counts of updated, notFound, and errors
+ */
+export async function bulkUpdateCustomerLegalInfo(
+    updates: Array<{ ID_CUSTOMER: string; LEGAL_ID: string; LEGAL_DOC: string }>
+): Promise<BulkUpdateResult> {
+    await ensureDepositsTable();
+
+    const result: BulkUpdateResult = {
+        updated: 0,
+        notFound: [],
+        errors: [],
+    };
+
+    // Process each update individually (no transaction - partial updates allowed)
+    for (const update of updates) {
+        try {
+            const { ID_CUSTOMER, LEGAL_ID, LEGAL_DOC } = update;
+
+            // Check if customer exists
+            const checkResult = await turso.execute({
+                sql: `SELECT COUNT(*) as count FROM ${DEPOSITS_DP10_TABLE} WHERE ID_CUSTOMER = ?;`,
+                args: [ID_CUSTOMER],
+            });
+
+            const count = Number(checkResult.rows[0]?.[0] ?? 0);
+
+            if (count === 0) {
+                result.notFound.push({
+                    ID_CUSTOMER,
+                    reason: "Customer not found",
+                });
+                continue;
+            }
+
+            // Update the record
+            const updateResult = await turso.execute({
+                sql: `UPDATE ${DEPOSITS_DP10_TABLE} SET LEGAL_ID = ?, LEGAL_DOC = ? WHERE ID_CUSTOMER = ?;`,
+                args: [LEGAL_ID, LEGAL_DOC, ID_CUSTOMER],
+            });
+
+            if (updateResult.rowsAffected > 0) {
+                result.updated += updateResult.rowsAffected;
+            } else {
+                result.notFound.push({
+                    ID_CUSTOMER,
+                    reason: "Update failed - no rows affected",
+                });
+            }
+        } catch (error) {
+            result.errors.push({
+                ID_CUSTOMER: update.ID_CUSTOMER,
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+
+    return result;
+}
 
 

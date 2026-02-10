@@ -4,7 +4,8 @@ import { turso } from "@/lib/turso";
 
 export const DEPOSITS_TRXLOG_TABLE = "deposits_trxlog";
 
-export const DEPOSITS_TRXLOG_COLUMNS = [
+// CSV columns (what we expect in the uploaded file)
+export const DEPOSITS_TRXLOG_CSV_COLUMNS = [
     "STMT_ENTRY_ID",
     "NUM_CONTRATO",
     "COD_TIPO_OPERACION",
@@ -28,11 +29,20 @@ export const DEPOSITS_TRXLOG_COLUMNS = [
     "COD_TRANSACCION",
 ];
 
+// Database columns (includes tracking columns)
+export const DEPOSITS_TRXLOG_COLUMNS = [
+    ...DEPOSITS_TRXLOG_CSV_COLUMNS,
+    "USED",
+    "TIMES_USED",
+];
+
 /**
  * Get column type for SQLite schema
  */
 function getColumnType(column: string): string {
-    // All columns stored as TEXT for flexibility
+    if (column === "USED") return "INTEGER DEFAULT 0";
+    if (column === "TIMES_USED") return "INTEGER DEFAULT 0";
+    // All other columns stored as TEXT for flexibility
     return "TEXT";
 }
 
@@ -40,16 +50,16 @@ function getColumnType(column: string): string {
  * Validate CSV headers
  */
 function validateHeaders(headers: string[]): void {
-    if (headers.length !== DEPOSITS_TRXLOG_COLUMNS.length) {
+    if (headers.length !== DEPOSITS_TRXLOG_CSV_COLUMNS.length) {
         throw new Error(
-            `Invalid CSV: expected ${DEPOSITS_TRXLOG_COLUMNS.length} columns, got ${headers.length}`
+            `Invalid CSV: expected ${DEPOSITS_TRXLOG_CSV_COLUMNS.length} columns, got ${headers.length}`
         );
     }
 
     for (let i = 0; i < headers.length; i++) {
-        if (headers[i] !== DEPOSITS_TRXLOG_COLUMNS[i]) {
+        if (headers[i] !== DEPOSITS_TRXLOG_CSV_COLUMNS[i]) {
             throw new Error(
-                `Invalid CSV header at position ${i}: expected "${DEPOSITS_TRXLOG_COLUMNS[i]}", got "${headers[i]}"`
+                `Invalid CSV header at position ${i}: expected "${DEPOSITS_TRXLOG_CSV_COLUMNS[i]}", got "${headers[i]}"`
             );
         }
     }
@@ -130,18 +140,18 @@ export async function insertDepositsTrxLogBatch(
         const placeholders = batch
             .map(
                 () =>
-                    `(${DEPOSITS_TRXLOG_COLUMNS.map(() => "?").join(", ")})`
+                    `(${DEPOSITS_TRXLOG_CSV_COLUMNS.map(() => "?").join(", ")})`
             )
             .join(", ");
 
         const values: any[] = [];
         for (const record of batch) {
-            for (const column of DEPOSITS_TRXLOG_COLUMNS) {
+            for (const column of DEPOSITS_TRXLOG_CSV_COLUMNS) {
                 values.push(record[column] || null);
             }
         }
 
-        const columnNames = DEPOSITS_TRXLOG_COLUMNS.map((c) => `"${c}"`).join(", ");
+        const columnNames = DEPOSITS_TRXLOG_CSV_COLUMNS.map((c) => `"${c}"`).join(", ");
         const sql = `INSERT INTO ${DEPOSITS_TRXLOG_TABLE} (${columnNames}) VALUES ${placeholders};`;
 
         await turso.execute({ sql, args: values });
@@ -211,4 +221,135 @@ export async function listDepositsTrxLog(
     }
 
     return { rows, total };
+}
+
+/**
+ * Migrate deposits_trxlog table to add USED tracking columns
+ */
+export async function migrateDepositsTrxLogUsedColumns(): Promise<void> {
+    await ensureDepositsTrxLogTable();
+
+    // Try to add USED column
+    try {
+        await turso.execute(
+            `ALTER TABLE ${DEPOSITS_TRXLOG_TABLE} ADD COLUMN "USED" INTEGER DEFAULT 0;`
+        );
+        console.log("[MIGRATION] Added USED column to deposits_trxlog");
+    } catch (error) {
+        // Column might already exist, ignore error
+        console.log("[MIGRATION] USED column already exists or error:", error);
+    }
+
+    // Try to add TIMES_USED column
+    try {
+        await turso.execute(
+            `ALTER TABLE ${DEPOSITS_TRXLOG_TABLE} ADD COLUMN "TIMES_USED" INTEGER DEFAULT 0;`
+        );
+        console.log("[MIGRATION] Added TIMES_USED column to deposits_trxlog");
+    } catch (error) {
+        // Column might already exist, ignore error
+        console.log("[MIGRATION] TIMES_USED column already exists or error:", error);
+    }
+}
+
+/**
+ * Mark a deposits_trxlog record as used by rowid
+ */
+export async function markDepositsTrxLogUsedByRowId(rowId: number): Promise<void> {
+    await ensureDepositsTrxLogTable();
+
+    console.log("[DEBUG MARK USED - TRXLOG] Marking rowid:", rowId);
+
+    const sql = `
+        UPDATE ${DEPOSITS_TRXLOG_TABLE}
+        SET "USED" = 1,
+            "TIMES_USED" = COALESCE("TIMES_USED", 0) + 1
+        WHERE rowid = ?;
+    `;
+
+    const result = await turso.execute({ sql, args: [rowId] });
+    console.log("[DEBUG MARK USED - TRXLOG] Rows affected:", result.rowsAffected);
+}
+
+export type DepositsTrxLogQueryFilters = {
+    STMT_ENTRY_ID?: string;
+    NUM_CONTRATO?: string;
+    COD_TIPO_OPERACION?: string;
+    COD_ESTADO_ULT_CIERRE?: string;
+    BASE_PERIODICIDAD?: string;
+    NUM_LIQUIDACION?: string;
+    NUM_TRANSACCION?: string;
+    COD_CLASE_TRX?: string;
+    FECHA_CONTABILIZACION?: string;
+    FECHA_REGISTRO?: string;
+    FECHA_MOVIMIENTO?: string;
+    COD_SIGNO_OPERACION?: string;
+    COD_MONEDA?: string;
+    TASA_OPERATIVA?: string;
+    COD_COTIZACION?: string;
+    COD_CARGO?: string;
+    TIPO_BALANCE?: string;
+    MONTO_IMPORTE_ORIGEN?: string;
+    MONTO_IMPORTE_OPER?: string;
+    REF_ACTIVIDAD?: string;
+    COD_TRANSACCION?: string;
+};
+
+/**
+ * Query deposits_trxlog by filters
+ * Returns the first matching UNUSED record
+ */
+export async function findDepositsTrxLogByFilters(
+    filters: DepositsTrxLogQueryFilters
+): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
+    await ensureDepositsTrxLogTable();
+    await migrateDepositsTrxLogUsedColumns();
+
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    // CRITICAL: Only return unused records
+    conditions.push(`("USED" IS NULL OR "USED" = 0)`);
+
+    // Add filter conditions for all possible columns
+    const filterKeys = Object.keys(filters) as Array<keyof DepositsTrxLogQueryFilters>;
+    for (const key of filterKeys) {
+        const value = filters[key];
+        if (value) {
+            conditions.push(`"${key}" = ?`);
+            args.push(value);
+        }
+    }
+
+    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
+    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_TRXLOG_TABLE}${whereClause} LIMIT 1;`;
+
+    // Debug logging
+    console.log("[DEBUG TRXLOG QUERY] SQL:", sql);
+    console.log("[DEBUG TRXLOG QUERY] Args:", args);
+    console.log("[DEBUG TRXLOG QUERY] Filters:", filters);
+
+    const result = await turso.execute({ sql, args });
+
+    console.log("[DEBUG TRXLOG QUERY] Result rows count:", result.rows.length);
+
+    if (result.rows.length === 0) return null;
+
+    // Convert row to record
+    const row = result.rows[0];
+    const record: Record<string, unknown> = {};
+    result.columns.forEach((col, idx) => {
+        record[col] = row[idx];
+    });
+
+    console.log(
+        "[DEBUG TRXLOG QUERY RESULT] USED:",
+        record.USED,
+        "TIMES_USED:",
+        record.TIMES_USED,
+        "rowid:",
+        record.__rowid
+    );
+
+    return record as Record<string, unknown> & { __rowid?: number | null };
 }
