@@ -1,72 +1,61 @@
-import AdmissionsCard from "@/components/dashboard/AdmissionsCard";
-import DistributionCard from "@/components/dashboard/DistributionCard";
-import DivisionCard from "@/components/dashboard/DivisionCard";
-import MonthlyCard from "@/components/dashboard/MonthlyCard";
+import Link from "next/link";
 import Sidebar from "@/components/dashboard/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
 import Topbar from "@/components/dashboard/Topbar";
-import TrendCard from "@/components/dashboard/TrendCard";
 import {
     ActivityIcon,
-    DatabaseIcon,
-    LayerIcon,
     UsersIcon,
+    BanknotesIcon,
+    LockClosedIcon,
 } from "@/components/dashboard/icons";
+import { getDashboardStats } from "@/lib/services/dashboard";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    const dashboardStats = await getDashboardStats();
+
     const stats = [
         {
-            title: "Total records",
-            value: "3,256",
-            delta: "+12%",
+            title: "Active Projects",
+            value: dashboardStats.activeProjects.toString(),
+            delta: "Active",
             accent: "linear-gradient(135deg, #ede9fe, #ddd6fe)",
-            icon: <DatabaseIcon className="h-6 w-6 text-violet-600" />,
+            icon: <FolderIcon className="h-6 w-6 text-violet-600" />,
         },
         {
-            title: "Active pipelines",
-            value: "394",
-            delta: "+8%",
+            title: "Task Completion Rate",
+            value: `${dashboardStats.taskCompletionRate}%`,
+            delta: "Rate",
             accent: "linear-gradient(135deg, #ccfbf1, #99f6e4)",
             icon: <ActivityIcon className="h-6 w-6 text-teal-600" />,
         },
         {
-            title: "API throughput",
-            value: "2,536",
-            delta: "+4%",
+            title: "Resource Utilization",
+            value: `${dashboardStats.resourceUtilization}%`,
+            delta: "Avg Allocation",
             accent: "linear-gradient(135deg, #ffedd5, #fed7aa)",
             icon: <UsersIcon className="h-6 w-6 text-orange-500" />,
         },
         {
-            title: "Failed jobs",
-            value: "38",
-            delta: "-6%",
+            title: "Upcoming Deadlines",
+            value: dashboardStats.upcomingDeadlines.length.toString(),
+            delta: "Next 7 Days",
             accent: "linear-gradient(135deg, #fee2e2, #fecaca)",
-            icon: <LayerIcon className="h-6 w-6 text-rose-500" />,
+            icon: <CalendarIcon className="h-6 w-6 text-rose-500" />,
         },
-    ];
-
-    const trendData = [
-        { month: "Oct", inbound: 3200, outbound: 1400 },
-        { month: "Nov", inbound: 3600, outbound: 1800 },
-        { month: "Dec", inbound: 4200, outbound: 1100 },
-        { month: "Jan", inbound: 3100, outbound: 1600 },
-        { month: "Feb", inbound: 3400, outbound: 1700 },
-        { month: "Mar", inbound: 3900, outbound: 1300 },
-    ];
-
-    const admissions = [
-        { label: "07 am", value: 60 },
-        { label: "08 am", value: 113 },
-        { label: "09 am", value: 80 },
-        { label: "10 am", value: 120 },
-        { label: "11 am", value: 95 },
-        { label: "12 pm", value: 110 },
-    ];
-
-    const divisions = [
-        { name: "Cardiology", value: 247 },
-        { name: "Neurology", value: 164 },
-        { name: "Surgery", value: 86 },
+        {
+            title: "Ingested Deposits",
+            value: dashboardStats.totalDepositsCount.toLocaleString(),
+            delta: "Total Rows",
+            accent: "linear-gradient(135deg, #dbeafe, #bfdbfe)",
+            icon: <BanknotesIcon className="h-6 w-6 text-blue-600" />,
+        },
+        {
+            title: "Active Blockades",
+            value: dashboardStats.totalLockedCount.toLocaleString(),
+            delta: "Locked Rows",
+            accent: "linear-gradient(135deg, #fce7f3, #fbcfe8)",
+            icon: <LockClosedIcon className="h-6 w-6 text-pink-600" />,
+        },
     ];
 
     return (
@@ -82,24 +71,52 @@ export default function DashboardPage() {
                             ))}
                         </div>
 
-                        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-                            <TrendCard data={trendData} />
-                            <DistributionCard
-                                title="Clients by Segment"
-                                primaryLabel="Retail"
-                                secondaryLabel="Enterprise"
-                                primaryPercent={38}
-                            />
-                        </div>
-
-                        <div className="mt-8 grid gap-6 lg:grid-cols-4">
-                            <AdmissionsCard data={admissions} />
-                            <DivisionCard divisions={divisions} />
-                            <MonthlyCard />
-                        </div>
+                        {/* Deadlines Section */}
+                        {dashboardStats.upcomingDeadlines.length > 0 && (
+                            <div className="mt-8">
+                                <h3 className="mb-4 text-lg font-semibold text-text-primary">Upcoming Deadlines</h3>
+                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    {dashboardStats.upcomingDeadlines.map((task) => (
+                                        <div key={task.id} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <h4 className="font-semibold text-text-primary">{task.title}</h4>
+                                                    <p className="mt-1 text-sm text-text-secondary">
+                                                        Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No date"}
+                                                    </p>
+                                                </div>
+                                                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${task.priority === 'high' ? 'bg-rose-100 text-rose-700' :
+                                                    task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-green-100 text-green-700'
+                                                    }`}>
+                                                    {task.priority || 'Normal'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </main>
                 </div>
             </div>
         </div>
+    );
+}
+
+// Icons needed for the updated stat cards
+function FolderIcon({ className }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+        </svg>
+    );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+        </svg>
     );
 }
