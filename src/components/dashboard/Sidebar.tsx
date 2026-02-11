@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useCan } from "@/hooks/useCan";
+import { Permission } from "@/lib/rbac/permissions";
 import {
   CalendarIcon,
   ChartIcon,
@@ -151,7 +152,7 @@ const SidebarItem = ({ item, isCollapsed, pathname }: { item: NavItem, isCollaps
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { can: userCan } = useCan();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -204,7 +205,7 @@ export default function Sidebar() {
         ))}
 
         {/* Admin Section */}
-        {session?.user?.roles?.includes("ADMIN") && (
+        {userCan(Permission.ADMIN_USERS) && (
           <div className="flex flex-col gap-2">
             {!isCollapsed && (
               <p className="px-3 text-xs font-bold uppercase tracking-wider text-text-secondary/70">
@@ -218,12 +219,7 @@ export default function Sidebar() {
                 pathname={pathname}
               />
               <SidebarItem
-                item={{ label: "System Roles", href: "/management/roles", icon: ShieldIcon }}
-                isCollapsed={isCollapsed}
-                pathname={pathname}
-              />
-              <SidebarItem
-                item={{ label: "Permissions", href: "/admin/permissions", icon: ShieldCheckIcon }}
+                item={{ label: "Roles", href: "/admin/roles", icon: ShieldIcon }}
                 isCollapsed={isCollapsed}
                 pathname={pathname}
               />

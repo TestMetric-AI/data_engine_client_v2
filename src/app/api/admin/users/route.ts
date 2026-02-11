@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { requireApi, Permission } from "@/lib/rbac";
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -21,15 +20,10 @@ function generatePassword(length = 12) {
 }
 
 export async function POST(req: NextRequest) {
+    const auth = await requireApi(Permission.ADMIN_USERS);
+    if ("error" in auth) return auth.error;
+
     try {
-        // 1. Check session and admin role
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
-
-        // 2. Parse body
         const body = await req.json();
         const result = registerSchema.safeParse(body);
 
@@ -39,7 +33,6 @@ export async function POST(req: NextRequest) {
 
         const { email, name, role } = result.data;
 
-        // 3. Check if user exists
         const existingUser = await prisma.user.findUnique({
             where: { email },
         });
@@ -48,7 +41,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User already exists" }, { status: 409 });
         }
 
-        // 4. Create user with generated password
         const generatedPassword = generatePassword();
         const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
@@ -84,13 +76,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+    const auth = await requireApi(Permission.ADMIN_USERS);
+    if ("error" in auth) return auth.error;
+
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
-
         const users = await prisma.user.findMany({
             select: {
                 id: true,
@@ -120,13 +109,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+    const auth = await requireApi(Permission.ADMIN_USERS);
+    if ("error" in auth) return auth.error;
+
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
-
         const body = await req.json();
         const { userId, isActive, roles } = body;
 
@@ -137,8 +123,6 @@ export async function PATCH(req: NextRequest) {
         const updateData: any = {};
         if (typeof isActive === "boolean") updateData.isActive = isActive;
         if (roles && Array.isArray(roles)) {
-            // Update roles: disconnect all and connect new ones by name
-            // First, find IDs for these role names
             const rolesToConnect = await prisma.role.findMany({
                 where: { name: { in: roles } },
                 select: { id: true }
@@ -156,7 +140,7 @@ export async function PATCH(req: NextRequest) {
         const updatedUser = await prisma.user.update({
             where: { id: userId },
             data: updateData,
-            include: { roles: true } // Include roles in response to update UI
+            include: { roles: true }
         });
 
         return NextResponse.json(updatedUser);

@@ -10,6 +10,7 @@ import {
     ResourceTaskStatusUpdateInput,
     reorderResourceTaskStatuses,
 } from "@/lib/services/resource-task-statuses";
+import { requireServer, Permission } from "@/lib/rbac";
 
 type ActionResponse = {
     success: boolean;
@@ -31,6 +32,7 @@ export async function getResourceTaskStatusesAction(params: {
 
 export async function createResourceTaskStatusAction(data: ResourceTaskStatusCreateInput): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         await createResourceTaskStatus(data);
         revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status created successfully" };
@@ -48,6 +50,7 @@ export async function updateResourceTaskStatusAction(
     data: ResourceTaskStatusUpdateInput
 ): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         await updateResourceTaskStatus(id, data);
         revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status updated successfully" };
@@ -62,6 +65,7 @@ export async function updateResourceTaskStatusAction(
 
 export async function deleteResourceTaskStatusAction(id: string): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         await deleteResourceTaskStatus(id);
         revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Status deleted successfully" };
@@ -76,6 +80,7 @@ export async function deleteResourceTaskStatusAction(id: string): Promise<Action
 
 export async function reorderResourceTaskStatusesAction(orderedIds: string[]): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         await reorderResourceTaskStatuses(orderedIds);
         revalidatePath("/management/tasks"); // Updated path
         return { success: true, message: "Statuses reordered successfully" };

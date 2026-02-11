@@ -9,6 +9,7 @@ import {
     ProjectCreateInput,
     ProjectUpdateInput,
 } from "@/lib/services/projects";
+import { requireServer, Permission } from "@/lib/rbac";
 
 type ActionResponse = {
     success: boolean;
@@ -32,6 +33,7 @@ export async function getProjectsAction(params: {
 
 export async function createProjectAction(data: ProjectCreateInput): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.PROJECTS_MANAGE);
         await createProject(data);
         revalidatePath("/management/projects");
         return { success: true, message: "Project created successfully" };
@@ -46,6 +48,7 @@ export async function updateProjectAction(
     data: ProjectUpdateInput
 ): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.PROJECTS_MANAGE);
         await updateProject(id, data);
         revalidatePath("/management/projects");
         return { success: true, message: "Project updated successfully" };
@@ -57,6 +60,7 @@ export async function updateProjectAction(
 
 export async function toggleProjectStatusAction(id: string, isActive: boolean): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.PROJECTS_MANAGE);
         await toggleProjectStatus(id, isActive);
         revalidatePath("/management/projects");
         return { success: true, message: `Project ${isActive ? "activated" : "deactivated"} successfully` };

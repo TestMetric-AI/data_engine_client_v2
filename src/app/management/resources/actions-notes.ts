@@ -10,6 +10,7 @@ import {
 import { getResourceByUserId } from "@/lib/services/resources";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireServer, Permission } from "@/lib/rbac";
 import prisma from "@/lib/db";
 
 // Assuming we can get session.
@@ -26,6 +27,7 @@ export async function getResourceNotesAction(resourceId: string) {
 
 export async function createResourceNoteAction(resourceId: string, noteContent: string) {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         const session = await getServerSession(authOptions);
         if (!session?.user?.email) {
             return { success: false, message: "Not authenticated" };
@@ -60,6 +62,7 @@ export async function createResourceNoteAction(resourceId: string, noteContent: 
 
 export async function deleteResourceNoteAction(id: string, resourceId: string) {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await deleteResourceNote(id);
         revalidatePath(`/management/resources/${resourceId}`);
         return { success: true, message: "Note deleted successfully" };

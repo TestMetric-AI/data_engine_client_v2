@@ -9,6 +9,7 @@ import {
     ResourceRoleCreateInput,
     ResourceRoleUpdateInput,
 } from "@/lib/services/resource-roles";
+import { requireServer, Permission } from "@/lib/rbac";
 
 type ActionResponse = {
     success: boolean;
@@ -32,6 +33,7 @@ export async function getResourceRolesAction(params: {
 
 export async function createResourceRoleAction(data: ResourceRoleCreateInput): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await createResourceRole(data);
         revalidatePath("/management/resource-roles");
         return { success: true, message: "Resource Role created successfully" };
@@ -49,6 +51,7 @@ export async function updateResourceRoleAction(
     data: ResourceRoleUpdateInput
 ): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await updateResourceRole(id, data);
         revalidatePath("/management/resource-roles");
         return { success: true, message: "Resource Role updated successfully" };
@@ -63,6 +66,7 @@ export async function updateResourceRoleAction(
 
 export async function toggleResourceRoleStatusAction(id: string, isActive: boolean): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await toggleResourceRoleStatus(id, isActive);
         revalidatePath("/management/resource-roles");
         return { success: true, message: `Resource Role ${isActive ? 'activated' : 'deactivated'} successfully` };
