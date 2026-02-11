@@ -125,12 +125,13 @@ model Resource {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  role          ResourceRole?               @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  tasks         ResourceTask[]
-  notes         ResourceNote[]              @relation("NotesForResource")
-  notesAuthored ResourceNote[]              @relation("NotesByAuthor")
-  statusChanges ResourceTaskStatusHistory[] @relation("StatusChangedBy")
-  approvedTasks ResourceTask[]              @relation("ApprovedBy")
+  role            ResourceRole?               @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  tasks           ResourceTask[]
+  notes           ResourceNote[]              @relation("NotesForResource")
+  notesAuthored   ResourceNote[]              @relation("NotesByAuthor")
+  statusChanges   ResourceTaskStatusHistory[] @relation("StatusChangedBy")
+  approvedTasks   ResourceTask[]              @relation("ApprovedBy")
+  dailiesAuthored ResourceTaskDaily[]
 
   @@index([active])
   @@index([roleId])
@@ -168,6 +169,7 @@ model ResourceTask {
   status        ResourceTaskStatus          @relation(fields: [statusId], references: [id], onDelete: Restrict)
   statusHistory ResourceTaskStatusHistory[]
   approvedBy    Resource?                   @relation("ApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  dailies       ResourceTaskDaily[]
 
   // tablero / listados
   @@index([statusId])
@@ -217,4 +219,24 @@ model ResourceTaskStatusHistory {
   @@index([changedById, changedAt(sort: Desc)])
   @@index([toStatusId, changedAt(sort: Desc)])
   @@map("resource_task_status_history")
+}
+
+model ResourceTaskDaily {
+  id         String @id @default(uuid()) @db.Uuid
+  taskId     String @map("task_id") @db.Uuid
+  resourceId String @map("resource_id") @db.Uuid // The author of the daily
+
+  content String @db.Text // The update content
+
+  date      DateTime @default(now()) @db.Date // Logical date of the daily
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  task     ResourceTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  resource Resource     @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([resourceId])
+  @@index([date])
+  @@map("resource_task_dailies")
 }

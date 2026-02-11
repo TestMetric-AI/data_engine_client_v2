@@ -7,6 +7,8 @@ import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated
 import Modal from "@/components/ui/Modal";
 import TaskForm from "./TaskForm";
 import { deleteTaskAction } from "./taskActions";
+import TaskDailiesModal from "./TaskDailiesModal";
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 // import { getResourceTasksAction } from "@/app/management/resource-roles/actions";
 // I haven't exposed `getResourceTasksAction` in `tasks/actions.ts` yet properly for generic use?
 // `tasks/actions.ts` has create/update/delete. I need a getter there or use the service directly in page.
@@ -71,6 +73,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
     // Delete Modal State
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [taskToDelete, setTaskToDelete] = useState<TaskWithRelations | null>(null);
+    const [dailyTask, setDailyTask] = useState<TaskWithRelations | null>(null);
 
     function initiateDelete(task: TaskWithRelations) {
         setTaskToDelete(task);
@@ -272,6 +275,13 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                                 <TrashIcon className="h-4 w-4" />
                                             </button>
                                         </div>
+                                        <button
+                                            onClick={() => setDailyTask(task)}
+                                            className="rounded-lg p-1.5 text-text-secondary hover:bg-surface hover:text-primary"
+                                            title="Daily Updates"
+                                        >
+                                            <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -330,6 +340,12 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                     </div>
                 </div>
             </Modal>
+
+            <TaskDailiesModal
+                isOpen={!!dailyTask}
+                onClose={() => setDailyTask(null)}
+                task={dailyTask}
+            />
         </section>
     );
 }

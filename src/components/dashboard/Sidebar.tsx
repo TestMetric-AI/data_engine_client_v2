@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCan } from "@/hooks/useCan";
-import { Permission } from "@/lib/rbac/permissions";
+import { Permission, type PermissionName } from "@/lib/rbac/permissions";
 import {
   CalendarIcon,
   ChartIcon,
@@ -27,6 +27,7 @@ interface NavItem {
   icon: any;
   href?: string;
   subItems?: { label: string; href: string }[];
+  permission?: PermissionName;
 }
 
 interface NavSection {
@@ -79,9 +80,9 @@ const navSections: NavSection[] = [
   {
     category: "Management",
     items: [
-      { label: "Resources", href: "/management/resources", icon: UserGroupIcon },
-      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon },
-      { label: "Projects", href: "/management/projects", icon: FolderIcon },
+      { label: "Resources", href: "/management/resources", icon: UserGroupIcon, permission: Permission.RESOURCES_MANAGE },
+      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon, permission: Permission.RESOURCES_MANAGE },
+      { label: "Projects", href: "/management/projects", icon: FolderIcon, permission: Permission.PROJECTS_MANAGE },
       { label: "Tasks", href: "/management/tasks", icon: CalendarIcon }
     ],
   },
@@ -192,14 +193,16 @@ export default function Sidebar() {
               </p>
             )}
             <div className="flex flex-col gap-1">
-              {section.items.map((item) => (
-                <SidebarItem
-                  key={item.label}
-                  item={item}
-                  isCollapsed={isCollapsed}
-                  pathname={pathname}
-                />
-              ))}
+              {section.items
+                .filter((item) => !item.permission || userCan(item.permission))
+                .map((item) => (
+                  <SidebarItem
+                    key={item.label}
+                    item={item}
+                    isCollapsed={isCollapsed}
+                    pathname={pathname}
+                  />
+                ))}
             </div>
           </div>
         ))}

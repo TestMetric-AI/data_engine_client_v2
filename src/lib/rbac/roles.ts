@@ -15,6 +15,10 @@ export const RolePermissions: Record<string, PermissionName[]> = {
     Permission.TASKS_MANAGE,
     Permission.TASKS_APPROVE,
   ],
+  TESTER: [
+    Permission.MANAGEMENT_VIEW,
+    Permission.TASKS_MANAGE,
+  ],
   USER: [
     Permission.MANAGEMENT_VIEW,
   ],
