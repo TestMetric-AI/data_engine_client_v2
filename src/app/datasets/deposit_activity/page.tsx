@@ -1,5 +1,8 @@
 "use client";
 
+import { triggerExistsDepositActivityEnrichmentAction, triggerExonerationCheckAction } from "./actions";
+import Modal from "@/components/ui/Modal";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -46,6 +49,45 @@ export default function DepositActivityDatasetPage() {
     const [search, setSearch] = useState("");
     const [form, setForm] = useState<FilterForm>(initialForm);
     const [showFilters, setShowFilters] = useState(false);
+
+    const [triggering, setTriggering] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [modalAction, setModalAction] = useState<"ENRICHMENT" | "EXONERATION" | null>(null);
+
+    const handleConfirmAction = async () => {
+        setShowConfirmModal(false);
+        setTriggering(true);
+        try {
+            let result;
+            if (modalAction === "ENRICHMENT") {
+                result = await triggerExistsDepositActivityEnrichmentAction();
+            } else if (modalAction === "EXONERATION") {
+                result = await triggerExonerationCheckAction();
+            }
+
+            if (result) {
+                if (result.success) {
+                    alert(result.message);
+                    if (modalAction === "EXONERATION") {
+                        window.location.reload();
+                    }
+                } else {
+                    alert("Failed: " + result.message);
+                }
+            }
+        } catch (err) {
+            alert("An error occurred.");
+            console.error(err);
+        } finally {
+            setTriggering(false);
+            setModalAction(null);
+        }
+    };
+
+    const openConfirmModal = (action: "ENRICHMENT" | "EXONERATION") => {
+        setModalAction(action);
+        setShowConfirmModal(true);
+    };
 
     function handleFilterChange(key: keyof FilterForm, value: string) {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -160,6 +202,20 @@ export default function DepositActivityDatasetPage() {
                     </p>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
+                    <button
+                        onClick={() => openConfirmModal("EXONERATION")}
+                        disabled={triggering}
+                        className="rounded-2xl border border-primary px-4 py-2 text-xs font-semibold text-primary shadow-sm disabled:opacity-50 hover:bg-surface transition-colors"
+                    >
+                        {triggering && modalAction === "EXONERATION" ? "Processing..." : "Trigger Exoneration Check"}
+                    </button>
+                    <button
+                        onClick={() => openConfirmModal("ENRICHMENT")}
+                        disabled={triggering}
+                        className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                    >
+                        {triggering && modalAction === "ENRICHMENT" ? "Triggering..." : "Trigger Exists Enrichment"}
+                    </button>
                     <Link
                         href="/pipelines/deposit-activity"
                         className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary/90 transition-colors text-center"
@@ -450,6 +506,34 @@ export default function DepositActivityDatasetPage() {
                     </div>
                 </div>
             </div>
+
+            <Modal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                title={modalAction === "ENRICHMENT" ? "Confirm Enrichment Trigger" : "Confirm Exoneration Check"}
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-text-secondary">
+                        {modalAction === "ENRICHMENT"
+                            ? "Are you sure you want to trigger the exists deposit activity enrichment pipeline? This process may take some time."
+                            : "Are you sure you want to check for exonerations? This will update records matching the local client list."}
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={() => setShowConfirmModal(false)}
+                            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-surface"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmAction}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+                        >
+                            Confirm
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
