@@ -12,6 +12,7 @@ import {
 import { getResourceByUserId } from "@/lib/services/resources";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireServer, Permission } from "@/lib/rbac";
 import prisma from "@/lib/db";
 
 async function getCurrentAuthorId() {
@@ -41,6 +42,7 @@ export type CreateTaskParams = {
 
 export async function createTaskAction(data: CreateTaskParams) {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         const authorId = await getCurrentAuthorId();
 
         // Construct Prisma input
@@ -65,9 +67,10 @@ export async function createTaskAction(data: CreateTaskParams) {
 }
 
 export async function updateTaskAction(taskId: string, data: any) {
-    // Data typing for update is tricky from client. 
+    // Data typing for update is tricky from client.
     // We expect partial of fields.
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         const authorId = await getCurrentAuthorId();
 
         // We need to map simple fields (statusId) to Prisma connect syntax if needed.
@@ -104,6 +107,7 @@ export async function updateTaskAction(taskId: string, data: any) {
 
 export async function deleteTaskAction(taskId: string) {
     try {
+        await requireServer(Permission.TASKS_MANAGE);
         await deleteResourceTask(taskId);
         revalidatePath("/management/tasks");
         return { success: true, message: "Task deleted successfully" };

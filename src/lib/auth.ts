@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "./db";
 import { sessionLogger } from "./session-logger";
+import type { PermissionName } from "./rbac/permissions";
 
 // Token duration configuration (in seconds)
 const ACCESS_TOKEN_EXPIRES = parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES || "900"); // 15 minutes
@@ -64,7 +65,7 @@ export const authOptions: NextAuthOptions = {
                 // Flatten permissions from all active roles
                 const allPermissions = Array.from(
                     new Set(activeRoles.flatMap((role) => role.permissions.map((p) => p.name)))
-                );
+                ) as PermissionName[];
 
                 const userPayload = {
                     id: user.id,

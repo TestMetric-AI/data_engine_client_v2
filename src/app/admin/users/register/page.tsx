@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useCan } from "@/hooks/useCan";
+import { Permission } from "@/lib/rbac/permissions";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
 import UsersTable from "./UsersTable";
@@ -9,19 +10,16 @@ import Modal from "@/components/ui/Modal";
 import RegisterUserForm from "./RegisterUserForm";
 
 export default function RegisterUserPage() {
-    const { data: session, status } = useSession();
+    const { can: userCan, loading } = useCan();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-    if (status === "loading") {
+    if (loading) {
         return <div className="p-8">Loading...</div>;
     }
 
-    if (!session?.user?.roles?.includes("ADMIN")) {
-        if (status === "authenticated") {
-            return <div className="p-8 text-red-600">Access Denied: You do not have permission to view this page.</div>;
-        }
-        return <div className="p-8">Please log in.</div>;
+    if (!userCan(Permission.ADMIN_USERS)) {
+        return <div className="p-8 text-red-600">Access Denied: You do not have permission to view this page.</div>;
     }
 
     const handleUserRegistered = () => {

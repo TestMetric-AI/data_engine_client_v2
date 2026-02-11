@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-// Helper to check admin permission
-async function checkAdmin() {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.roles.includes("ADMIN")) {
-        return false;
-    }
-    return true;
-}
+import { requireApi, Permission } from "@/lib/rbac";
 
 export async function GET(req: NextRequest) {
-    if (!(await checkAdmin())) {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-    }
+    const auth = await requireApi(Permission.ADMIN_ROLES);
+    if ("error" in auth) return auth.error;
 
     try {
         const roles = await prisma.role.findMany({
@@ -34,9 +23,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    if (!(await checkAdmin())) {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-    }
+    const auth = await requireApi(Permission.ADMIN_ROLES);
+    if ("error" in auth) return auth.error;
 
     try {
         const body = await req.json();
@@ -70,9 +58,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-    if (!(await checkAdmin())) {
-        return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
-    }
+    const auth = await requireApi(Permission.ADMIN_ROLES);
+    if ("error" in auth) return auth.error;
 
     try {
         const body = await req.json();

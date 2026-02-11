@@ -11,6 +11,7 @@ import {
     ResourceCreateInput,
     ResourceUpdateInput,
 } from "@/lib/services/resources";
+import { requireServer, Permission } from "@/lib/rbac";
 
 type ActionResponse = {
     success: boolean;
@@ -34,6 +35,7 @@ export async function getResourcesAction(params: {
 
 export async function createResourceAction(data: ResourceCreateInput): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await createResource(data);
         revalidatePath("/management/resources");
         return { success: true, message: "Resource created successfully" };
@@ -48,6 +50,7 @@ export async function updateResourceAction(
     data: ResourceUpdateInput
 ): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await updateResource(id, data);
         revalidatePath("/management/resources");
         return { success: true, message: "Resource updated successfully" };
@@ -59,6 +62,7 @@ export async function updateResourceAction(
 
 export async function toggleResourceStatusAction(id: string, isActive: boolean): Promise<ActionResponse> {
     try {
+        await requireServer(Permission.RESOURCES_MANAGE);
         await toggleResourceStatus(id, isActive);
         revalidatePath("/management/resources");
         return { success: true, message: `Resource ${isActive ? "activated" : "deactivated"} successfully` };

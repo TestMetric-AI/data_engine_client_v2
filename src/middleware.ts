@@ -1,14 +1,40 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { PermissionName } from "@/lib/rbac/permissions";
+
+const SUPER_ADMIN_ROLE = "ADMIN";
+
+const ROUTE_PERMISSIONS: [string, PermissionName][] = [
+    ["/admin/users", "ADMIN_USERS"],
+    ["/admin/roles", "ADMIN_ROLES"],
+    ["/management/resources", "MANAGE_RESOURCES"],
+    ["/management/resource-roles", "MANAGE_RESOURCES"],
+    ["/management/projects", "MANAGE_PROJECTS"],
+    ["/management", "VIEW_MANAGEMENT"],
+];
 
 export default withAuth(
     async function middleware(req) {
         const token = req.nextauth.token;
 
-        // If user is authenticated, trigger session update to track activity
         if (token) {
-            // The session callback will automatically update lastActivity
-            // This happens through NextAuth's session management
+            const pathname = req.nextUrl.pathname;
+
+            // Check route-level permissions
+            for (const [route, permission] of ROUTE_PERMISSIONS) {
+                if (pathname.startsWith(route)) {
+                    const roles = (token.roles as string[]) || [];
+                    const permissions = (token.permissions as string[]) || [];
+
+                    // ADMIN bypass
+                    if (roles.includes(SUPER_ADMIN_ROLE)) break;
+
+                    if (!permissions.includes(permission)) {
+                        return NextResponse.redirect(new URL("/", req.url));
+                    }
+                    break;
+                }
+            }
         }
 
         return NextResponse.next();
@@ -16,8 +42,7 @@ export default withAuth(
     {
         callbacks: {
             authorized: ({ req, token }) => {
-                // Protect sensitive routes
-                const protectedPaths = ["/dashboard", "/datasets", "/pipelines"];
+                const protectedPaths = ["/dashboard", "/datasets", "/pipelines", "/admin", "/management"];
                 const isProtected = protectedPaths.some((path) =>
                     req.nextUrl.pathname.startsWith(path)
                 );
@@ -35,5 +60,11 @@ export default withAuth(
 );
 
 export const config = {
-    matcher: ["/dashboard/:path*", "/datasets/:path*", "/pipelines/:path*"],
+    matcher: [
+        "/dashboard/:path*",
+        "/datasets/:path*",
+        "/pipelines/:path*",
+        "/admin/:path*",
+        "/management/:path*",
+    ],
 };

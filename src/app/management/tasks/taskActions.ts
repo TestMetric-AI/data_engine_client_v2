@@ -10,7 +10,8 @@ import {
 } from "@/lib/services/resource-tasks";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { hasPermission } from "@/lib/auth-guards";
+import { requireServer, canServer, Permission } from "@/lib/rbac";
+import { canApproveTask } from "@/lib/rbac/policies";
 import prisma from "@/lib/db";
 
 type ActionResponse = {
@@ -19,13 +20,8 @@ type ActionResponse = {
     data?: any;
 };
 
-async function checkPermission(permission: string) {
-    return hasPermission(permission);
-}
-
 export async function createTaskAction(data: ResourceTaskCreateInput): Promise<ActionResponse> {
-    const allowed = await checkPermission("MANAGE_TASKS");
-    if (!allowed) return { success: false, message: "Unauthorized. Requires MANAGE_TASKS permission." };
+    await requireServer(Permission.TASKS_MANAGE);
 
     try {
         const session = await getServerSession(authOptions);
@@ -35,10 +31,6 @@ export async function createTaskAction(data: ResourceTaskCreateInput): Promise<A
             include: { resource: true }
         });
         const authorId = user?.resource?.id;
-
-        // Force approvalStatus to PENDING (default in schema, but explicit here is good)
-        // Note: The input type might not have approvalStatus if generated from schema before update.
-        // We'll trust Prisma default or pass strict data.
 
         await createResourceTask(data, authorId);
         revalidatePath("/management/tasks");
@@ -53,8 +45,7 @@ export async function updateTaskAction(
     id: string,
     data: ResourceTaskUpdateInput
 ): Promise<ActionResponse> {
-    const allowed = await checkPermission("MANAGE_TASKS");
-    if (!allowed) return { success: false, message: "Unauthorized. Requires MANAGE_TASKS permission." };
+    await requireServer(Permission.TASKS_MANAGE);
 
     try {
         const session = await getServerSession(authOptions);
@@ -75,8 +66,7 @@ export async function updateTaskAction(
 }
 
 export async function deleteTaskAction(id: string): Promise<ActionResponse> {
-    const allowed = await checkPermission("MANAGE_TASKS");
-    if (!allowed) return { success: false, message: "Unauthorized. Requires MANAGE_TASKS permission." };
+    await requireServer(Permission.TASKS_MANAGE);
 
     try {
         await deleteResourceTask(id);
@@ -88,21 +78,21 @@ export async function deleteTaskAction(id: string): Promise<ActionResponse> {
     }
 }
 
-async function checkApprovalPermission() {
+async function checkApprovalPermission(): Promise<boolean> {
     const session = await getServerSession(authOptions);
     if (!session?.user) return false;
 
-    // 1. Check System Permission
-    const hasSystemPerm = await hasPermission("APPROVE_TASKS");
-    if (hasSystemPerm) return true;
+    const user = session.user as { id: string; roles: string[]; permissions: string[] };
 
-    // 2. Check Resource Role
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
+    // Check resource role for contextual policy
+    const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
         select: { resource: { select: { role: { select: { name: true } } } } }
     });
 
-    return user?.resource?.role?.name === "LEAD";
+    return canApproveTask(user, {
+        resourceRoleName: dbUser?.resource?.role?.name,
+    });
 }
 
 export async function approveTaskAction(id: string): Promise<ActionResponse> {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const IDLE_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_IDLE_TIMEOUT || "1800"); // 30 minutes in seconds
 const WARNING_THRESHOLD = parseInt(process.env.NEXT_PUBLIC_WARNING_THRESHOLD || "300"); // 5 minutes in seconds
@@ -14,7 +14,7 @@ interface SessionMonitorState {
 }
 
 export function useSessionMonitor() {
-    const { data: session, update } = useSession();
+    const { data: session, status, update } = useSession();
     const [state, setState] = useState<SessionMonitorState>({
         showWarning: false,
         timeRemaining: 0,
@@ -75,12 +75,9 @@ export function useSessionMonitor() {
                     timeRemaining: timeUntilTimeout,
                 }));
             } else if (timeUntilTimeout <= 0) {
-                // Session expired, will be handled by NextAuth
-                setState((prev) => ({
-                    ...prev,
-                    showWarning: false,
-                    timeRemaining: 0,
-                }));
+                // Session expired — force sign out and redirect to login
+                signOut({ callbackUrl: "/login" });
+                return;
             } else {
                 setState((prev) => ({
                     ...prev,
@@ -97,6 +94,21 @@ export function useSessionMonitor() {
             clearInterval(interval);
         };
     }, [session, state.lastActivity, updateActivity]);
+
+    // Track whether the user was previously authenticated
+    const wasAuthenticated = useRef(false);
+    useEffect(() => {
+        if (status === "authenticated") {
+            wasAuthenticated.current = true;
+        }
+    }, [status]);
+
+    // Redirect only when an active session is lost (not on initial load)
+    useEffect(() => {
+        if (status === "unauthenticated" && wasAuthenticated.current) {
+            signOut({ callbackUrl: "/login" });
+        }
+    }, [status]);
 
     return {
         showWarning: state.showWarning,

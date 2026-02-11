@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useCan } from "@/hooks/useCan";
+import { Permission, type PermissionName } from "@/lib/rbac/permissions";
 import {
   CalendarIcon,
   ChartIcon,
@@ -26,6 +27,7 @@ interface NavItem {
   icon: any;
   href?: string;
   subItems?: { label: string; href: string }[];
+  permission?: PermissionName;
 }
 
 interface NavSection {
@@ -78,9 +80,9 @@ const navSections: NavSection[] = [
   {
     category: "Management",
     items: [
-      { label: "Resources", href: "/management/resources", icon: UserGroupIcon },
-      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon },
-      { label: "Projects", href: "/management/projects", icon: FolderIcon },
+      { label: "Resources", href: "/management/resources", icon: UserGroupIcon, permission: Permission.RESOURCES_MANAGE },
+      { label: "Resource Roles", href: "/management/resource-roles", icon: ShieldCheckIcon, permission: Permission.RESOURCES_MANAGE },
+      { label: "Projects", href: "/management/projects", icon: FolderIcon, permission: Permission.PROJECTS_MANAGE },
       { label: "Tasks", href: "/management/tasks", icon: CalendarIcon }
     ],
   },
@@ -151,7 +153,7 @@ const SidebarItem = ({ item, isCollapsed, pathname }: { item: NavItem, isCollaps
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { can: userCan } = useCan();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
@@ -191,20 +193,22 @@ export default function Sidebar() {
               </p>
             )}
             <div className="flex flex-col gap-1">
-              {section.items.map((item) => (
-                <SidebarItem
-                  key={item.label}
-                  item={item}
-                  isCollapsed={isCollapsed}
-                  pathname={pathname}
-                />
-              ))}
+              {section.items
+                .filter((item) => !item.permission || userCan(item.permission))
+                .map((item) => (
+                  <SidebarItem
+                    key={item.label}
+                    item={item}
+                    isCollapsed={isCollapsed}
+                    pathname={pathname}
+                  />
+                ))}
             </div>
           </div>
         ))}
 
         {/* Admin Section */}
-        {session?.user?.roles?.includes("ADMIN") && (
+        {userCan(Permission.ADMIN_USERS) && (
           <div className="flex flex-col gap-2">
             {!isCollapsed && (
               <p className="px-3 text-xs font-bold uppercase tracking-wider text-text-secondary/70">
@@ -218,12 +222,7 @@ export default function Sidebar() {
                 pathname={pathname}
               />
               <SidebarItem
-                item={{ label: "System Roles", href: "/management/roles", icon: ShieldIcon }}
-                isCollapsed={isCollapsed}
-                pathname={pathname}
-              />
-              <SidebarItem
-                item={{ label: "Permissions", href: "/admin/permissions", icon: ShieldCheckIcon }}
+                item={{ label: "Roles", href: "/admin/roles", icon: ShieldIcon }}
                 isCollapsed={isCollapsed}
                 pathname={pathname}
               />
