@@ -16,6 +16,7 @@ import {
   ArrowRightOnRectangleIcon as LogOutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   UserPlusIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
@@ -38,6 +39,7 @@ export {
   LogOutIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   UserPlusIcon,
   UserGroupIcon,
 };

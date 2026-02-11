@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   CalendarIcon,
@@ -14,6 +14,7 @@ import {
   UsersIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   UserPlusIcon,
   LayerIcon,
   ShieldCheckIcon,
@@ -42,11 +43,17 @@ const navSections: NavSection[] = [
   {
     category: "Pipelines",
     items: [
-      { label: "Deposits", href: "/pipelines/deposits", icon: ChartIcon },
-      { label: "Deposits Locked", href: "/pipelines/deposits-locked", icon: ChartIcon },
-      { label: "Deposits TrxLog", href: "/pipelines/deposits-trxlog", icon: ChartIcon },
-      { label: "Interest Change", href: "/pipelines/deposits-interest-change", icon: ChartIcon },
-      { label: "Deposit Activity", href: "/pipelines/deposit-activity", icon: ChartIcon },
+      {
+        label: "Deposits",
+        icon: ChartIcon,
+        subItems: [
+          { label: "General", href: "/pipelines/deposits" },
+          { label: "Locked", href: "/pipelines/deposits-locked" },
+          { label: "TrxLog", href: "/pipelines/deposits-trxlog" },
+          { label: "Interest Change", href: "/pipelines/deposits-interest-change" },
+          { label: "Activity", href: "/pipelines/deposit-activity" },
+        ]
+      },
       { label: "Client Exonerated", href: "/pipelines/client_exonerated", icon: ChartIcon },
     ],
   },
@@ -78,6 +85,69 @@ const navSections: NavSection[] = [
     ],
   },
 ];
+
+const SidebarItem = ({ item, isCollapsed, pathname }: { item: NavItem, isCollapsed: boolean, pathname: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const Icon = item.icon;
+  const isActive = item.href ? pathname === item.href : false;
+  const isParentActive = item.subItems?.some(sub => pathname === sub.href);
+
+  // Initialize state based on active route
+  useEffect(() => {
+    if (isParentActive) {
+      setIsOpen(true);
+    }
+  }, [isParentActive]);
+
+  if (item.subItems) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={() => !isCollapsed && setIsOpen(!isOpen)}
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isParentActive ? "text-text-primary font-medium" : "text-text-secondary"
+            } ${isCollapsed ? "justify-center px-2" : "justify-between"}`}
+        >
+          <div className="flex items-center gap-3">
+            <Icon className={`h-5 w-5 shrink-0 ${isParentActive ? "text-primary" : ""}`} />
+            {!isCollapsed && <span>{item.label}</span>}
+          </div>
+          {!isCollapsed && (
+            isOpen ? <ChevronDownIcon className="h-4 w-4 text-text-secondary" /> : <ChevronRightIcon className="h-4 w-4 text-text-secondary" />
+          )}
+        </button>
+
+        {/* Submenu */}
+        <div className={`flex flex-col gap-1 overflow-hidden transition-all duration-300 ${isOpen && !isCollapsed ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}>
+          {item.subItems.map((subItem) => (
+            <Link
+              key={subItem.href}
+              href={subItem.href}
+              className={`ml-11 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === subItem.href
+                  ? "bg-surface text-text-primary"
+                  : "text-text-secondary"
+                }`}
+            >
+              {subItem.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href || "#"}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isActive
+          ? "bg-primary text-white shadow-sm"
+          : "text-text-secondary"
+        } ${isCollapsed ? "justify-center px-2" : ""}`}
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      {!isCollapsed && <span>{item.label}</span>}
+    </Link>
+  );
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -121,53 +191,14 @@ export default function Sidebar() {
               </p>
             )}
             <div className="flex flex-col gap-1">
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = 'href' in item ? pathname === item.href : false;
-
-                // Handle items with subitems (like Datasets)
-                if (item.subItems) {
-                  return (
-                    <div key={item.label} className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface text-text-secondary ${isCollapsed ? "justify-center px-2" : ""
-                          }`}
-                      >
-                        <Icon className="h-5 w-5 shrink-0" />
-                        {!isCollapsed && <span>{item.label}</span>}
-                      </button>
-                      {!isCollapsed &&
-                        item.subItems.map((subItem) => (
-                          <Link
-                            key={subItem.href}
-                            href={subItem.href}
-                            className={`ml-8 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === subItem.href
-                              ? "bg-surface text-text-primary"
-                              : "text-text-secondary"
-                              }`}
-                          >
-                            {subItem.label}
-                          </Link>
-                        ))}
-                    </div>
-                  );
-                }
-
-                return (
-                  <Link
-                    key={item.label}
-                    href={item.href || "#"}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isActive
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-text-secondary"
-                      } ${isCollapsed ? "justify-center px-2" : ""}`}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {!isCollapsed && <span>{item.label}</span>}
-                  </Link>
-                );
-              })}
+              {section.items.map((item) => (
+                <SidebarItem
+                  key={item.label}
+                  item={item}
+                  isCollapsed={isCollapsed}
+                  pathname={pathname}
+                />
+              ))}
             </div>
           </div>
         ))}
@@ -181,36 +212,21 @@ export default function Sidebar() {
               </p>
             )}
             <div className="flex flex-col gap-1">
-              <Link
-                href="/admin/users/register"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/users/register"
-                  ? "bg-surface text-text-primary"
-                  : "text-text-secondary"
-                  } ${isCollapsed ? "justify-center px-2" : ""}`}
-              >
-                <UserPlusIcon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>Register User</span>}
-              </Link>
-              <Link
-                href="/management/roles"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/management/roles"
-                  ? "bg-surface text-text-primary"
-                  : "text-text-secondary"
-                  } ${isCollapsed ? "justify-center px-2" : ""}`}
-              >
-                <ShieldIcon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>System Roles</span>}
-              </Link>
-              <Link
-                href="/admin/permissions"
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${pathname === "/admin/permissions"
-                  ? "bg-surface text-text-primary"
-                  : "text-text-secondary"
-                  } ${isCollapsed ? "justify-center px-2" : ""}`}
-              >
-                <ShieldCheckIcon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span>Permissions</span>}
-              </Link>
+              <SidebarItem
+                item={{ label: "Register User", href: "/admin/users/register", icon: UserPlusIcon }}
+                isCollapsed={isCollapsed}
+                pathname={pathname}
+              />
+              <SidebarItem
+                item={{ label: "System Roles", href: "/management/roles", icon: ShieldIcon }}
+                isCollapsed={isCollapsed}
+                pathname={pathname}
+              />
+              <SidebarItem
+                item={{ label: "Permissions", href: "/admin/permissions", icon: ShieldCheckIcon }}
+                isCollapsed={isCollapsed}
+                pathname={pathname}
+              />
             </div>
           </div>
         )}
