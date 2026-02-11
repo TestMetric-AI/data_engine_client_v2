@@ -3,11 +3,19 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "./db";
+import { sessionLogger } from "./session-logger";
+
+// Token duration configuration (in seconds)
+const ACCESS_TOKEN_EXPIRES = parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES || "900"); // 15 minutes
+const REFRESH_TOKEN_EXPIRES = parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES || "1209600"); // 14 days
+const IDLE_TIMEOUT = parseInt(process.env.JWT_IDLE_TIMEOUT || "1800"); // 30 minutes
 
 export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma as any),
     session: {
         strategy: "jwt",
+        maxAge: REFRESH_TOKEN_EXPIRES, // Maximum session duration (14 days)
+        updateAge: ACCESS_TOKEN_EXPIRES, // Update session every 15 minutes
     },
     pages: {
         signIn: "/login",
@@ -58,13 +66,21 @@ export const authOptions: NextAuthOptions = {
                     new Set(activeRoles.flatMap((role) => role.permissions.map((p) => p.name)))
                 );
 
-                return {
+                const userPayload = {
                     id: user.id,
                     email: user.email,
                     name: user.name,
                     roles: activeRoles.map((role) => role.name),
                     permissions: allPermissions,
                 };
+
+                // Log successful login
+                sessionLogger.logLogin(user.id, user.email, {
+                    roles: userPayload.roles,
+                    permissions: allPermissions,
+                });
+
+                return userPayload;
             },
         }),
     ],
@@ -74,15 +90,69 @@ export const authOptions: NextAuthOptions = {
                 session.user.id = token.id;
                 session.user.roles = token.roles;
                 session.user.permissions = token.permissions;
+
+                // Update last activity timestamp
+                const now = Math.floor(Date.now() / 1000);
+                (session as any).lastActivity = now;
             }
             return session;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger }) {
+            const now = Math.floor(Date.now() / 1000);
+
+            // Initial login
             if (user) {
                 token.id = user.id;
                 token.roles = user.roles;
                 token.permissions = user.permissions;
+                token.accessTokenExpires = now + ACCESS_TOKEN_EXPIRES; // 15 minutes from now
+                token.refreshTokenExpires = now + REFRESH_TOKEN_EXPIRES; // 14 days from now
+                token.lastActivity = now;
+                return token;
             }
+
+            // Check if refresh token has expired (14 days)
+            if (token.refreshTokenExpires && now > (token.refreshTokenExpires as number)) {
+                // Log refresh token expiration
+                sessionLogger.logRefreshTokenExpired(
+                    token.id as string,
+                    token.email as string,
+                    "14 days"
+                );
+                // Refresh token expired, force re-login
+                return {} as any; // Return empty token to invalidate session
+            }
+
+            // Check idle timeout (30 minutes of inactivity)
+            if (token.lastActivity && now - (token.lastActivity as number) > IDLE_TIMEOUT) {
+                const inactiveMinutes = Math.floor((now - (token.lastActivity as number)) / 60);
+                // Log idle timeout
+                sessionLogger.logIdleTimeout(
+                    token.id as string,
+                    token.email as string,
+                    inactiveMinutes
+                );
+                // Session expired due to inactivity
+                return {} as any; // Return empty token to invalidate session
+            }
+
+            // Check if access token needs refresh (15 minutes)
+            if (token.accessTokenExpires && now > (token.accessTokenExpires as number)) {
+                // Access token expired, refresh it
+                token.accessTokenExpires = now + ACCESS_TOKEN_EXPIRES;
+                // Log token refresh
+                sessionLogger.logTokenRefresh(
+                    token.id as string,
+                    token.email as string,
+                    token.accessTokenExpires as number
+                );
+            }
+
+            // Update last activity on any token update
+            if (trigger === "update") {
+                token.lastActivity = now;
+            }
+
             return token;
         },
     },

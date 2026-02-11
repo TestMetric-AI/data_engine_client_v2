@@ -5,6 +5,19 @@ import Modal from "@/components/ui/Modal";
 
 import { useEffect, useMemo, useState } from "react";
 
+type QueryForm = {
+  NUMERO_CONTRATO: string;
+  NUM_PRODUCTO: string;
+  ID_PRODUCTO: string;
+  ID_CUSTOMER: string;
+  MONEDA: string;
+  PLAZO: string;
+  ESTADO_PRODUCTO: string;
+  FECHA_NEGOCIACION_HASTA: string;
+  FECHA_EFECTIVA_DESDE: string;
+  FECHA_EFECTIVA_HASTA: string;
+};
+
 type Pagination = {
   page: number;
   pageSize: number;
@@ -28,11 +41,24 @@ type DepositsResponse = {
 
 const pageSizes = [10, 25, 50, 100, 200, 500];
 
+const initialForm: QueryForm = {
+  NUMERO_CONTRATO: "",
+  NUM_PRODUCTO: "",
+  ID_PRODUCTO: "",
+  ID_CUSTOMER: "",
+  MONEDA: "",
+  PLAZO: "",
+  ESTADO_PRODUCTO: "",
+  FECHA_NEGOCIACION_HASTA: "",
+  FECHA_EFECTIVA_DESDE: "",
+  FECHA_EFECTIVA_HASTA: "",
+};
+
 export default function DepositsDatasetPage() {
   const [rows, setRows] = useState<DepositRow[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
-    pageSize: 50,
+    pageSize: 10,
     total: 0,
     totalPages: 1,
   });
@@ -42,6 +68,8 @@ export default function DepositsDatasetPage() {
   const [exoneratedFilter, setExoneratedFilter] = useState<
     "ALL" | "SI" | "NO"
   >("ALL");
+  const [form, setForm] = useState<QueryForm>(initialForm);
+  const [showFilters, setShowFilters] = useState(false);
 
   const [triggering, setTriggering] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -85,6 +113,52 @@ export default function DepositsDatasetPage() {
   // Removed old performEnrichmentTrigger to avoid duplication and clutter
 
 
+  const filterFields: Array<{
+    key: keyof QueryForm;
+    label: string;
+    type?: string;
+  }> = [
+      { key: "NUMERO_CONTRATO", label: "Numero contrato" },
+      { key: "NUM_PRODUCTO", label: "Num producto" },
+      { key: "ID_PRODUCTO", label: "ID producto" },
+      { key: "ID_CUSTOMER", label: "ID customer" },
+      { key: "MONEDA", label: "Moneda" },
+      { key: "PLAZO", label: "Plazo" },
+      { key: "ESTADO_PRODUCTO", label: "Estado producto" },
+      {
+        key: "FECHA_NEGOCIACION_HASTA",
+        label: "Fecha negociacion hasta",
+        type: "date",
+      },
+      {
+        key: "FECHA_EFECTIVA_DESDE",
+        label: "Fecha efectiva desde",
+        type: "date",
+      },
+      {
+        key: "FECHA_EFECTIVA_HASTA",
+        label: "Fecha efectiva hasta",
+        type: "date",
+      },
+    ];
+
+  function handleFilterChange(key: keyof QueryForm, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function clearFilters() {
+    setForm(initialForm);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  }
+
+  const hasAnyFilter = Object.values(form).some((value) => value.trim() !== "");
+  const hasEffectiveRange =
+    form.FECHA_EFECTIVA_DESDE.trim() !== "" ||
+    form.FECHA_EFECTIVA_HASTA.trim() !== "";
+  const isEffectiveRangeValid =
+    form.FECHA_EFECTIVA_DESDE.trim() !== "" &&
+    form.FECHA_EFECTIVA_HASTA.trim() !== "";
+
   useEffect(() => {
     let isMounted = true;
     async function loadRows() {
@@ -95,6 +169,15 @@ export default function DepositsDatasetPage() {
           page: String(pagination.page),
           pageSize: String(pagination.pageSize),
         });
+
+        // Add filter parameters if any are set
+        (Object.keys(form) as (keyof QueryForm)[]).forEach((key) => {
+          const value = form[key].trim();
+          if (value) {
+            params.set(key, value);
+          }
+        });
+
         const response = await fetch(`/api/deposits?${params.toString()}`);
         if (!response.ok) {
           throw new Error("No se pudo cargar el listado.");
@@ -123,7 +206,7 @@ export default function DepositsDatasetPage() {
     return () => {
       isMounted = false;
     };
-  }, [pagination.page, pagination.pageSize]);
+  }, [pagination.page, pagination.pageSize, form]);
 
   const filteredRows = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -221,6 +304,72 @@ export default function DepositsDatasetPage() {
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Filter Section */}
+      <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Filtros
+            </p>
+            <h2 className="mt-1 font-display text-xl font-semibold text-text-primary">
+              Parametros de busqueda
+            </h2>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-text-secondary hover:border-primary transition-colors"
+          >
+            {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+          </button>
+        </div>
+
+        {showFilters && (
+          <>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filterFields.map(({ key, label, type }) => (
+                <label key={key} className="flex flex-col gap-2 text-xs">
+                  <span className="font-semibold text-text-secondary">{label}</span>
+                  <input
+                    type={type ?? "text"}
+                    value={form[key]}
+                    onChange={(event) => handleFilterChange(key, event.target.value)}
+                    className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
+                  />
+                </label>
+              ))}
+            </div>
+
+            {hasEffectiveRange && !isEffectiveRangeValid && (
+              <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                FECHA_EFECTIVA requiere ambos extremos (DESDE y HASTA).
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))}
+                disabled={!hasAnyFilter || (hasEffectiveRange && !isEffectiveRangeValid)}
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
+              >
+                Aplicar filtros
+              </button>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-xl border border-border bg-card px-4 py-2 text-sm font-semibold text-text-secondary hover:border-primary"
+              >
+                Limpiar filtros
+              </button>
+              {hasAnyFilter && (
+                <span className="text-xs text-text-secondary">
+                  {Object.values(form).filter(v => v.trim() !== "").length} filtro(s) activo(s)
+                </span>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">

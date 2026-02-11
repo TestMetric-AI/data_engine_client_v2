@@ -22,7 +22,7 @@ export default function ClientExoneratedPage() {
   const [rows, setRows] = useState<ClientExoneratedRow[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
-    pageSize: 100,
+    pageSize: 10,
     total: 0,
     totalPages: 1,
   });

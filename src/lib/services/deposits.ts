@@ -177,6 +177,14 @@ export type DepositsParseResult = {
     errors: DepositsValidationError[];
 };
 
+export type ReductionStats = {
+    originalCount: number;
+    reducedCount: number;
+    categoriesTotal: number;
+    categoriesReduced: string[];
+    reductionPercentage: number;
+};
+
 const EMPTY_TO_NULL = (value: unknown) => {
     if (value === undefined || value === null) {
         return null;
@@ -333,6 +341,88 @@ export function parseDepositsCsv(buffer: Buffer): DepositsParseResult {
     return { rows: normalizedRows, errors };
 }
 
+/**
+ * Reduce dataset by category to manage large files
+ * Ensures all ID_PRODUCTO categories are represented
+ * Focuses reduction on categories with too many records
+ * @param rows Array of deposit rows
+ * @param maxPerCategory Maximum rows per category (default: 1000)
+ * @returns Reduced rows and statistics
+ */
+export function reduceDataByCategory(
+    rows: DepositsRow[],
+    maxPerCategory: number = 1000
+): { reducedRows: DepositsRow[]; stats: ReductionStats } {
+    const originalCount = rows.length;
+
+    // Group rows by ID_PRODUCTO
+    const categoriesMap = new Map<string, DepositsRow[]>();
+
+    rows.forEach(row => {
+        const category = String(row.ID_PRODUCTO ?? 'UNKNOWN');
+        if (!categoriesMap.has(category)) {
+            categoriesMap.set(category, []);
+        }
+        categoriesMap.get(category)!.push(row);
+    });
+
+    const categoriesReduced: string[] = [];
+    const reducedRows: DepositsRow[] = [];
+
+    // Process each category
+    categoriesMap.forEach((categoryRows, category) => {
+        if (categoryRows.length <= maxPerCategory) {
+            // Keep all rows for small categories
+            reducedRows.push(...categoryRows);
+        } else {
+            // Randomly sample for large categories
+            const sampled = randomSample(categoryRows, maxPerCategory);
+            reducedRows.push(...sampled);
+            categoriesReduced.push(category);
+        }
+    });
+
+    const reducedCount = reducedRows.length;
+    const reductionPercentage = originalCount > 0
+        ? Math.round(((originalCount - reducedCount) / originalCount) * 10000) / 100
+        : 0;
+
+    const stats: ReductionStats = {
+        originalCount,
+        reducedCount,
+        categoriesTotal: categoriesMap.size,
+        categoriesReduced,
+        reductionPercentage
+    };
+
+    // Log reduction details
+    if (categoriesReduced.length > 0) {
+        console.log(
+            `[DEPOSITS] Data reduced: ${originalCount} → ${reducedCount} rows (${reductionPercentage}% reduction)\n` +
+            `Categories total: ${categoriesMap.size}, Categories reduced: ${categoriesReduced.length}\n` +
+            `Reduced categories: ${categoriesReduced.join(', ')}`
+        );
+    }
+
+    return { reducedRows, stats };
+}
+
+/**
+ * Randomly sample n items from an array
+ * Uses Fisher-Yates shuffle algorithm
+ */
+function randomSample<T>(array: T[], n: number): T[] {
+    const result = [...array];
+    const sampleSize = Math.min(n, array.length);
+
+    for (let i = 0; i < sampleSize; i++) {
+        const j = i + Math.floor(Math.random() * (result.length - i));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result.slice(0, sampleSize);
+}
+
 function validateHeaders(headers: string[]): DepositsValidationError | null {
     if (headers.length !== DEPOSITS_DP10_COLUMNS.length) {
         return {
@@ -422,6 +512,36 @@ function validateRow(
     return errors;
 }
 
+/**
+ * Calculate safe batch size for SQLite inserts
+ * SQLite has a limit of 32,766 variables per statement
+ * @param columnCount Number of columns in the table
+ * @param preferredBatchSize Preferred batch size (default: 500)
+ * @returns Object with batchSize and wasReduced flag
+ */
+function calculateSafeBatchSize(
+    columnCount: number,
+    preferredBatchSize: number = 500
+): { batchSize: number; wasReduced: boolean } {
+    const SQLITE_MAX_VARIABLES = 32766;
+    const maxPossibleBatchSize = Math.floor(SQLITE_MAX_VARIABLES / columnCount);
+
+    // Add 10% safety margin
+    const safeBatchSize = Math.floor(maxPossibleBatchSize * 0.9);
+
+    if (preferredBatchSize > safeBatchSize) {
+        return {
+            batchSize: safeBatchSize,
+            wasReduced: true
+        };
+    }
+
+    return {
+        batchSize: preferredBatchSize,
+        wasReduced: false
+    };
+}
+
 export async function ensureDepositsTable(): Promise<void> {
     const tableColumns = [
         ...DEPOSITS_DP10_COLUMNS,
@@ -447,21 +567,45 @@ export async function insertDeposits(rows: DepositsRow[]): Promise<number> {
     await ensureDepositsTable();
 
     const columnsSql = DEPOSITS_DP10_COLUMNS.map((col) => `"${col}"`).join(", ");
-    const placeholders = DEPOSITS_DP10_COLUMNS.map(() => "?").join(", ");
-    const insertSql = `INSERT INTO ${DEPOSITS_DP10_TABLE} (${columnsSql}) VALUES (${placeholders});`;
+
+    // Calculate safe batch size based on column count
+    const { batchSize: BATCH_SIZE, wasReduced } = calculateSafeBatchSize(
+        DEPOSITS_DP10_COLUMNS.length,
+        500 // Preferred batch size
+    );
+
+    if (wasReduced) {
+        console.warn(
+            `[DEPOSITS] Batch size reduced to ${BATCH_SIZE} rows to comply with SQLite's variable limit. ` +
+            `(${DEPOSITS_DP10_COLUMNS.length} columns × ${BATCH_SIZE} rows = ${DEPOSITS_DP10_COLUMNS.length * BATCH_SIZE} variables, max: 32,766)`
+        );
+    }
 
     const transaction = await turso.transaction("write");
 
     try {
-        for (const row of rows) {
-            const values = DEPOSITS_DP10_COLUMNS.map((column) =>
-                normalizeValue(column, row[column] ?? "")
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+
+            // Create multi-row INSERT statement
+            const placeholderRows = batch
+                .map(() => `(${DEPOSITS_DP10_COLUMNS.map(() => "?").join(", ")})`)
+                .join(", ");
+
+            const batchInsertSql = `INSERT INTO ${DEPOSITS_DP10_TABLE} (${columnsSql}) VALUES ${placeholderRows};`;
+
+            // Flatten all values for the batch
+            const batchValues = batch.flatMap((row) =>
+                DEPOSITS_DP10_COLUMNS.map((column) =>
+                    normalizeValue(column, row[column] ?? "")
+                )
             );
+
             // LibSQL client handles types reasonably well.
             // We need to cast ensure values are primitives supported by SQLite.
             await transaction.execute({
-                sql: insertSql,
-                args: values as any[],
+                sql: batchInsertSql,
+                args: batchValues as any[],
             });
         }
         await transaction.commit();
@@ -499,6 +643,9 @@ export async function findDepositByFilters(
     const conditions: string[] = [];
     const args: any[] = [];
 
+    // CRITICAL: Only return unused records
+    conditions.push(`(USED IS NULL OR USED = 0)`);
+
     const exactFilters: Array<keyof DepositsQueryFilters> = [
         "NUMERO_CONTRATO",
         "NUM_PRODUCTO",
@@ -528,11 +675,15 @@ export async function findDepositByFilters(
         args.push(filters.FECHA_EFECTIVA_HASTA);
     }
 
-    const whereClause =
-        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_DP10_TABLE}${whereClause} LIMIT 1;`;
 
+    console.log("[DEBUG DEPOSITS QUERY] SQL:", sql);
+    console.log("[DEBUG DEPOSITS QUERY] Args:", args);
+
     const result = await turso.execute({ sql, args });
+
+    console.log("[DEBUG DEPOSITS QUERY] Result rows count:", result.rows.length);
 
     if (result.rows.length === 0) return null;
 
@@ -543,18 +694,22 @@ export async function findDepositByFilters(
         record[col] = row[idx];
     });
 
+    console.log("[DEBUG DEPOSITS QUERY RESULT] USED:", record.USED, "TIMES_USED:", record.TIMES_USED, "rowid:", record.__rowid);
+
     return record as (Record<string, unknown> & { __rowid?: number | null });
 }
 
 export async function markDepositUsedByRowId(rowId: number): Promise<void> {
     await ensureDepositsTable();
-    await turso.execute({
+    console.log("[DEBUG MARK USED - DEPOSITS] Marking rowid:", rowId);
+    const result = await turso.execute({
         sql: `UPDATE ${DEPOSITS_DP10_TABLE}
           SET USED = 1,
               TIMES_USED = COALESCE(TIMES_USED, 0) + 1
           WHERE rowid = ?;`,
         args: [rowId],
     });
+    console.log("[DEBUG MARK USED - DEPOSITS] Rows affected:", result.rowsAffected);
 }
 
 export type DepositsPage = {
@@ -564,20 +719,60 @@ export type DepositsPage = {
 
 export async function listDeposits(
     limit: number,
-    offset: number
+    offset: number,
+    filters?: DepositsQueryFilters
 ): Promise<DepositsPage> {
     await ensureDepositsTable();
 
-    const countResult = await turso.execute(
-        `SELECT COUNT(*) as total FROM ${DEPOSITS_DP10_TABLE};`
-    );
+    const conditions: string[] = [];
+    const args: any[] = [];
+
+    // Build WHERE clause if filters are provided
+    if (filters) {
+        const exactFilters: Array<keyof DepositsQueryFilters> = [
+            "NUMERO_CONTRATO",
+            "NUM_PRODUCTO",
+            "ID_PRODUCTO",
+            "ID_CUSTOMER",
+            "MONEDA",
+            "PLAZO",
+            "ESTADO_PRODUCTO",
+        ];
+
+        for (const key of exactFilters) {
+            const value = filters[key];
+            if (value) {
+                conditions.push(`"${key}" = ?`);
+                args.push(value);
+            }
+        }
+
+        if (filters.FECHA_NEGOCIACION_HASTA) {
+            conditions.push(`"FECHA_NEGOCIACION" <= ?`);
+            args.push(filters.FECHA_NEGOCIACION_HASTA);
+        }
+
+        if (filters.FECHA_EFECTIVA_DESDE && filters.FECHA_EFECTIVA_HASTA) {
+            conditions.push(`"FECHA_EFECTIVA" BETWEEN ? AND ?`);
+            args.push(filters.FECHA_EFECTIVA_DESDE);
+            args.push(filters.FECHA_EFECTIVA_HASTA);
+        }
+    }
+
+    const whereClause =
+        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+
+    const countResult = await turso.execute({
+        sql: `SELECT COUNT(*) as total FROM ${DEPOSITS_DP10_TABLE}${whereClause};`,
+        args: args,
+    });
     const total = Number(countResult.rows[0][0] ?? 0);
 
     const dataResult = await turso.execute({
-        sql: `SELECT * FROM ${DEPOSITS_DP10_TABLE}
+        sql: `SELECT * FROM ${DEPOSITS_DP10_TABLE}${whereClause}
           ORDER BY FECHA_NEGOCIACION DESC, NUMERO_CONTRATO ASC
           LIMIT ? OFFSET ?;`,
-        args: [limit, offset],
+        args: [...args, limit, offset],
     });
 
     const rows = dataResult.rows.map((row) => {
@@ -696,5 +891,73 @@ export async function updateExoneratedStatus(): Promise<number> {
     return result.rowsAffected;
 }
 
+export type BulkUpdateResult = {
+    updated: number;
+    notFound: Array<{ ID_CUSTOMER: string; reason: string }>;
+    errors: Array<{ ID_CUSTOMER: string; error: string }>;
+};
+
+/**
+ * Bulk update LEGAL_ID and LEGAL_DOC fields for multiple customers from CSV data
+ * Continues updating valid records even if some fail
+ * @param updates Array of {ID_CUSTOMER, LEGAL_ID, LEGAL_DOC} objects
+ * @returns Object with counts of updated, notFound, and errors
+ */
+export async function bulkUpdateCustomerLegalInfo(
+    updates: Array<{ ID_CUSTOMER: string; LEGAL_ID: string; LEGAL_DOC: string }>
+): Promise<BulkUpdateResult> {
+    await ensureDepositsTable();
+
+    const result: BulkUpdateResult = {
+        updated: 0,
+        notFound: [],
+        errors: [],
+    };
+
+    // Process each update individually (no transaction - partial updates allowed)
+    for (const update of updates) {
+        try {
+            const { ID_CUSTOMER, LEGAL_ID, LEGAL_DOC } = update;
+
+            // Check if customer exists
+            const checkResult = await turso.execute({
+                sql: `SELECT COUNT(*) as count FROM ${DEPOSITS_DP10_TABLE} WHERE ID_CUSTOMER = ?;`,
+                args: [ID_CUSTOMER],
+            });
+
+            const count = Number(checkResult.rows[0]?.[0] ?? 0);
+
+            if (count === 0) {
+                result.notFound.push({
+                    ID_CUSTOMER,
+                    reason: "Customer not found",
+                });
+                continue;
+            }
+
+            // Update the record
+            const updateResult = await turso.execute({
+                sql: `UPDATE ${DEPOSITS_DP10_TABLE} SET LEGAL_ID = ?, LEGAL_DOC = ? WHERE ID_CUSTOMER = ?;`,
+                args: [LEGAL_ID, LEGAL_DOC, ID_CUSTOMER],
+            });
+
+            if (updateResult.rowsAffected > 0) {
+                result.updated += updateResult.rowsAffected;
+            } else {
+                result.notFound.push({
+                    ID_CUSTOMER,
+                    reason: "Update failed - no rows affected",
+                });
+            }
+        } catch (error) {
+            result.errors.push({
+                ID_CUSTOMER: update.ID_CUSTOMER,
+                error: error instanceof Error ? error.message : "Unknown error",
+            });
+        }
+    }
+
+    return result;
+}
 
 

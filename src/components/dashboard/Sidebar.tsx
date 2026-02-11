@@ -43,6 +43,10 @@ const navSections: NavSection[] = [
     category: "Pipelines",
     items: [
       { label: "Deposits", href: "/pipelines/deposits", icon: ChartIcon },
+      { label: "Deposits Locked", href: "/pipelines/deposits-locked", icon: ChartIcon },
+      { label: "Deposits TrxLog", href: "/pipelines/deposits-trxlog", icon: ChartIcon },
+      { label: "Interest Change", href: "/pipelines/deposits-interest-change", icon: ChartIcon },
+      { label: "Deposit Activity", href: "/pipelines/deposit-activity", icon: ChartIcon },
       { label: "Client Exonerated", href: "/pipelines/client_exonerated", icon: ChartIcon },
     ],
   },
@@ -54,6 +58,10 @@ const navSections: NavSection[] = [
         icon: FolderIcon,
         subItems: [
           { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
+          { label: "Deposits Locked", href: "/datasets/deposits_locked" },
+          { label: "Deposits TrxLog", href: "/datasets/deposits_trxlog" },
+          { label: "Interest Change", href: "/datasets/deposits_interest_change" },
+          { label: "Deposit Activity", href: "/datasets/deposit_activity" },
           { label: "Deposits Query", href: "/datasets/deposits_query" },
           { label: "Client Exonerated", href: "/datasets/client_exonerated" },
         ],

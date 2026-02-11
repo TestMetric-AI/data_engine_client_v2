@@ -4,6 +4,8 @@ import {
     insertDeposits,
     listDeposits,
     parseDepositsCsv,
+    reduceDataByCategory,
+    ReductionStats,
 } from "@/lib/services/deposits";
 import { verifyApiAuth } from "@/lib/auth-helper";
 
@@ -23,9 +25,34 @@ export async function GET(request: NextRequest) {
         );
     }
 
+    // Extract filter parameters
+    const getValue = (key: string): string | undefined => {
+        const val = searchParams.get(key);
+        if (!val) return undefined;
+        const trimmed = val.trim();
+        return trimmed.length > 0 ? trimmed : undefined;
+    };
+
+    const filters = {
+        NUMERO_CONTRATO: getValue("NUMERO_CONTRATO"),
+        NUM_PRODUCTO: getValue("NUM_PRODUCTO"),
+        ID_PRODUCTO: getValue("ID_PRODUCTO"),
+        ID_CUSTOMER: getValue("ID_CUSTOMER"),
+        MONEDA: getValue("MONEDA"),
+        PLAZO: getValue("PLAZO"),
+        ESTADO_PRODUCTO: getValue("ESTADO_PRODUCTO"),
+        FECHA_NEGOCIACION_HASTA: getValue("FECHA_NEGOCIACION_HASTA"),
+        FECHA_EFECTIVA_DESDE: getValue("FECHA_EFECTIVA_DESDE"),
+        FECHA_EFECTIVA_HASTA: getValue("FECHA_EFECTIVA_HASTA"),
+    };
+
+    // Check if any filter is provided
+    const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
+    const filtersToPass = hasAnyFilter ? filters : undefined;
+
     try {
         const offset = (page - 1) * pageSize;
-        const { rows, total } = await listDeposits(pageSize, offset);
+        const { rows, total } = await listDeposits(pageSize, offset, filtersToPass);
         const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
 
         return NextResponse.json({
@@ -57,6 +84,12 @@ export async function POST(request: NextRequest) {
         const overwriteRaw = request.nextUrl.searchParams.get("overwrite");
         const overwrite = overwriteRaw === "true" || overwriteRaw === "1";
 
+        // Extract reduction parameters
+        const reduceRaw = request.nextUrl.searchParams.get("reduce");
+        const shouldReduce = reduceRaw === "true" || reduceRaw === "1";
+        const maxPerCategoryRaw = request.nextUrl.searchParams.get("maxPerCategory");
+        const maxPerCategory = maxPerCategoryRaw ? Number(maxPerCategoryRaw) : 1000;
+
         if (!file) {
             return NextResponse.json(
                 { message: "Debe enviar un archivo CSV." },
@@ -85,16 +118,35 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Apply reduction if requested
+        let rowsToInsert = parseResult.rows;
+        let reductionStats: ReductionStats | null = null;
+
+        if (shouldReduce) {
+            const { reducedRows, stats } = reduceDataByCategory(rowsToInsert, maxPerCategory);
+            rowsToInsert = reducedRows;
+            reductionStats = stats;
+        }
+
         if (overwrite) {
             await clearDeposits();
         }
 
-        const inserted = await insertDeposits(parseResult.rows);
+        const inserted = await insertDeposits(rowsToInsert);
 
-        return NextResponse.json(
-            { message: "Archivo cargado correctamente.", inserted },
-            { status: 201 }
-        );
+        const response: any = {
+            message: "Archivo cargado correctamente.",
+            inserted
+        };
+
+        if (reductionStats) {
+            response.reduction = {
+                applied: true,
+                ...reductionStats
+            };
+        }
+
+        return NextResponse.json(response, { status: 201 });
     } catch (error) {
         console.error("Error uploading deposits:", error);
         return NextResponse.json(

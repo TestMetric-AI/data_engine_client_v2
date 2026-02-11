@@ -1,10 +1,10 @@
 "use server";
 
-import { triggerAzurePipeline } from "@/lib/services/trigger-azure-pipeline";
+import { triggerAzurePipelineForLegalEnrichmentDP10 } from "@/lib/services/trigger-azure-pipeline";
 
 export async function triggerLegalEnrichmentAction() {
     try {
-        await triggerAzurePipeline();
+        await triggerAzurePipelineForLegalEnrichmentDP10();
         return { success: true, message: "Pipeline triggered successfully" };
     } catch (error) {
         console.error("Error in triggerLegalEnrichmentAction:", error);
