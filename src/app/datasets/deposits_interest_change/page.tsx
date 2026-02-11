@@ -1,5 +1,8 @@
 "use client";
 
+import { triggerInterestTypeEnrichmentAction } from "./actions";
+import Modal from "@/components/ui/Modal";
+
 import { useEffect, useMemo, useState } from "react";
 
 type QueryForm = {
@@ -47,6 +50,27 @@ export default function DepositsInterestChangePage() {
     const [search, setSearch] = useState("");
     const [form, setForm] = useState<QueryForm>(initialForm);
     const [showFilters, setShowFilters] = useState(false);
+
+    const [triggering, setTriggering] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+    const handleConfirmAction = async () => {
+        setShowConfirmModal(false);
+        setTriggering(true);
+        try {
+            const result = await triggerInterestTypeEnrichmentAction();
+            if (result.success) {
+                alert(result.message);
+            } else {
+                alert("Failed: " + result.message);
+            }
+        } catch (err) {
+            alert("An error occurred.");
+            console.error(err);
+        } finally {
+            setTriggering(false);
+        }
+    };
 
     const filterFields: Array<{
         key: keyof QueryForm;
@@ -182,6 +206,13 @@ export default function DepositsInterestChangePage() {
                     </p>
                 </div>
                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center lg:w-auto">
+                    <button
+                        onClick={() => setShowConfirmModal(true)}
+                        disabled={triggering}
+                        className="rounded-2xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-50 hover:bg-primary/90 transition-colors"
+                    >
+                        {triggering ? "Triggering..." : "Trigger Interest Type Enrichment"}
+                    </button>
                     <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-sm">
                         <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-secondary">
                             <path
@@ -439,6 +470,32 @@ export default function DepositsInterestChangePage() {
                     </div>
                 </div>
             </div>
+
+            <Modal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                title="Confirm Enrichment Trigger"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-text-secondary">
+                        Are you sure you want to trigger the interest type enrichment pipeline? This process may take some time.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <button
+                            onClick={() => setShowConfirmModal(false)}
+                            className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-surface"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmAction}
+                            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90"
+                        >
+                            Confirm
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

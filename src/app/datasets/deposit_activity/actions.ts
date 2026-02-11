@@ -11,15 +11,3 @@ export async function triggerExistsDepositActivityEnrichmentAction() {
         return { success: false, message: "Failed to trigger pipeline" };
     }
 }
-
-import { updateExoneratedStatus } from "@/lib/services/deposits";
-
-export async function triggerExonerationCheckAction() {
-    try {
-        const affected = await updateExoneratedStatus();
-        return { success: true, message: `Exoneration check completed. Updated ${affected} records.` };
-    } catch (error) {
-        console.error("Error in triggerExonerationCheckAction:", error);
-        return { success: false, message: "Failed to run exoneration check" };
-    }
-}
