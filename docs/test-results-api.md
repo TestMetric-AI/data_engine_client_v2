@@ -37,6 +37,7 @@ Accepts a **single object** or an **array of objects** with the following fields
 | `retries` | integer | No | Max retries configured (default: `0`) |
 | `retry` | integer | No | Current retry attempt (default: `0`) |
 | `tags` | string[] | No | Test tags (default: `[]`) |
+| `environment` | string | No | Execution environment (e.g. `"staging"`, `"production"`, `"dev"`) |
 | `pipelineId` | string | No | CI/CD pipeline/run ID |
 | `commitSha` | string | No | Git commit SHA (max 40 chars) |
 | `branch` | string | No | Git branch name |
