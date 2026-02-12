@@ -261,6 +261,9 @@ model TestResult {
   // Objeto TestInfo completo como JSON
   testInfo    Json     @map("test_info")
 
+  // Entorno de ejecucion
+  environment String?  @db.VarChar(100)
+
   // Detalles del pipeline CI/CD
   pipelineId  String?  @map("pipeline_id") @db.VarChar(255)
   commitSha   String?  @map("commit_sha") @db.VarChar(40)

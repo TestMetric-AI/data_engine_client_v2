@@ -14,6 +14,7 @@ const testResultSchema = z.object({
     retry: z.number().int().nonnegative().default(0),
     tags: z.array(z.string()).default([]),
     testInfo: z.record(z.string(), z.unknown()),
+    environment: z.string().max(100).optional(),
     pipelineId: z.string().max(255).optional(),
     commitSha: z.string().max(40).optional(),
     branch: z.string().max(255).optional(),
