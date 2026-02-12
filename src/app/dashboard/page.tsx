@@ -12,6 +12,8 @@ import {
 import { getDashboardStats } from "@/lib/services/dashboard";
 import { getTestResultsDashboardData } from "@/lib/services/test-results-dashboard";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
     const [dashboardStats, testResultsData] = await Promise.all([
         getDashboardStats(),
