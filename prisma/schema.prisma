@@ -240,3 +240,40 @@ model ResourceTaskDaily {
   @@index([date])
   @@map("resource_task_dailies")
 }
+
+// ============================================================================
+// TEST RESULTS (Playwright CI/CD)
+// ============================================================================
+
+model TestResult {
+  id          String   @id @default(uuid()) @db.Uuid
+
+  // Campos clave de Playwright (indexados para consultas)
+  testTitle   String   @map("test_title") @db.Text
+  testStatus  String   @map("test_status") @db.VarChar(20)
+  duration    Int      // milisegundos
+  testFile    String   @map("test_file") @db.Text
+  testProject String?  @map("test_project") @db.VarChar(100)
+  retries     Int      @default(0)
+  retry       Int      @default(0)
+  tags        String[] @default([])
+
+  // Objeto TestInfo completo como JSON
+  testInfo    Json     @map("test_info")
+
+  // Detalles del pipeline CI/CD
+  pipelineId  String?  @map("pipeline_id") @db.VarChar(255)
+  commitSha   String?  @map("commit_sha") @db.VarChar(40)
+  branch      String?  @db.VarChar(255)
+  runUrl      String?  @map("run_url") @db.Text
+  provider    String?  @db.VarChar(50)
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([testStatus])
+  @@index([testProject])
+  @@index([branch])
+  @@index([createdAt(sort: Desc)])
+  @@index([pipelineId])
+  @@map("test_results")
+}

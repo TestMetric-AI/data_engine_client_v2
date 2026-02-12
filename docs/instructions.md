@@ -1,25 +1,9 @@
-# Nuevo esquema de roles y permisos
+# Eres un next js senior dev
 
-Se necesita hacer escalable y mantenible por lo que se cambiara el enfoque a permisos + roles.
-
-Funcionara de la siguiente manera:
-
-- Define permisos (constantes tipadas)
-
-- Mapea roles → permisos
-
-- Crea policies por “acciones” (no solo por rutas)
-
-- Un solo can() que evalúa:
-
-  - permiso requerido
-
-  - y si aplica, reglas (tenant, owner, team, etc.)
-
-- Usar el mismo can() / require() en:
-
-  - UI (mostrar/ocultar)
-
-  - middleware (bloquear páginas)
-
-  - backend (API/server actions)
+## Instrucciones 
+1. Se necesita agregar una tabla al schema de prisma para registrar via API los resultados de unas ejecuciones en CI/CD de playwright. Debe de contener el objeto TestInfo de playwright y tambien los detalles importantes del pipeline. 
+2. El flujo seria el siguiente: 
+- Se ejecuta el test en CI/CD 
+- Se envia un request a una nueva API route en nextjs con el objeto TestInfo y los detalles del pipeline 
+- Se guarda en la base de datos 
+3. Mantelo simple y limpio, no quiero que me compliques la vida con cosas que no son necesarias. 
