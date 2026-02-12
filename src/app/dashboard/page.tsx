@@ -2,6 +2,7 @@ import Link from "next/link";
 import Sidebar from "@/components/dashboard/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
 import Topbar from "@/components/dashboard/Topbar";
+import TestResultsCharts from "@/components/dashboard/TestResultsCharts";
 import {
     ActivityIcon,
     UsersIcon,
@@ -9,9 +10,13 @@ import {
     LockClosedIcon,
 } from "@/components/dashboard/icons";
 import { getDashboardStats } from "@/lib/services/dashboard";
+import { getTestResultsDashboardData } from "@/lib/services/test-results-dashboard";
 
 export default async function DashboardPage() {
-    const dashboardStats = await getDashboardStats();
+    const [dashboardStats, testResultsData] = await Promise.all([
+        getDashboardStats(),
+        getTestResultsDashboardData(),
+    ]);
 
     const stats = [
         {
@@ -97,6 +102,9 @@ export default async function DashboardPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Test Results Section */}
+                        <TestResultsCharts data={testResultsData} />
                     </main>
                 </div>
             </div>
