@@ -678,12 +678,9 @@ export async function findDepositByFilters(
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_DP10_TABLE}${whereClause} LIMIT 1;`;
 
-    console.log("[DEBUG DEPOSITS QUERY] SQL:", sql);
-    console.log("[DEBUG DEPOSITS QUERY] Args:", args);
-
     const result = await turso.execute({ sql, args });
 
-    console.log("[DEBUG DEPOSITS QUERY] Result rows count:", result.rows.length);
+
 
     if (result.rows.length === 0) return null;
 
@@ -694,14 +691,14 @@ export async function findDepositByFilters(
         record[col] = row[idx];
     });
 
-    console.log("[DEBUG DEPOSITS QUERY RESULT] USED:", record.USED, "TIMES_USED:", record.TIMES_USED, "rowid:", record.__rowid);
+
 
     return record as (Record<string, unknown> & { __rowid?: number | null });
 }
 
 export async function markDepositUsedByRowId(rowId: number): Promise<void> {
     await ensureDepositsTable();
-    console.log("[DEBUG MARK USED - DEPOSITS] Marking rowid:", rowId);
+
     const result = await turso.execute({
         sql: `UPDATE ${DEPOSITS_DP10_TABLE}
           SET USED = 1,
@@ -709,7 +706,7 @@ export async function markDepositUsedByRowId(rowId: number): Promise<void> {
           WHERE rowid = ?;`,
         args: [rowId],
     });
-    console.log("[DEBUG MARK USED - DEPOSITS] Rows affected:", result.rowsAffected);
+
 }
 
 export type DepositsPage = {
@@ -899,7 +896,7 @@ export type BulkUpdateResult = {
 
 /**
  * Bulk update LEGAL_ID and LEGAL_DOC fields for multiple customers from CSV data
- * Continues updating valid records even if some fail
+ * Uses a transaction to ensure atomicity — all updates succeed or none are applied
  * @param updates Array of {ID_CUSTOMER, LEGAL_ID, LEGAL_DOC} objects
  * @returns Object with counts of updated, notFound, and errors
  */
@@ -914,29 +911,13 @@ export async function bulkUpdateCustomerLegalInfo(
         errors: [],
     };
 
-    // Process each update individually (no transaction - partial updates allowed)
-    for (const update of updates) {
-        try {
+    const transaction = await turso.transaction("write");
+
+    try {
+        for (const update of updates) {
             const { ID_CUSTOMER, LEGAL_ID, LEGAL_DOC } = update;
 
-            // Check if customer exists
-            const checkResult = await turso.execute({
-                sql: `SELECT COUNT(*) as count FROM ${DEPOSITS_DP10_TABLE} WHERE ID_CUSTOMER = ?;`,
-                args: [ID_CUSTOMER],
-            });
-
-            const count = Number(checkResult.rows[0]?.[0] ?? 0);
-
-            if (count === 0) {
-                result.notFound.push({
-                    ID_CUSTOMER,
-                    reason: "Customer not found",
-                });
-                continue;
-            }
-
-            // Update the record
-            const updateResult = await turso.execute({
+            const updateResult = await transaction.execute({
                 sql: `UPDATE ${DEPOSITS_DP10_TABLE} SET LEGAL_ID = ?, LEGAL_DOC = ? WHERE ID_CUSTOMER = ?;`,
                 args: [LEGAL_ID, LEGAL_DOC, ID_CUSTOMER],
             });
@@ -946,15 +927,15 @@ export async function bulkUpdateCustomerLegalInfo(
             } else {
                 result.notFound.push({
                     ID_CUSTOMER,
-                    reason: "Update failed - no rows affected",
+                    reason: "Customer not found",
                 });
             }
-        } catch (error) {
-            result.errors.push({
-                ID_CUSTOMER: update.ID_CUSTOMER,
-                error: error instanceof Error ? error.message : "Unknown error",
-            });
         }
+
+        await transaction.commit();
+    } catch (error) {
+        await transaction.close();
+        throw error;
     }
 
     return result;

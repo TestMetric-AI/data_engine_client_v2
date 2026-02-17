@@ -353,12 +353,12 @@ export async function markDepositActivityUsedByRowId(rowId: number): Promise<voi
         WHERE rowid = ?;
     `;
 
-    console.log("[DEBUG MARK USED] Marking rowid:", rowId);
+
     const result = await turso.execute({
         sql,
         args: [rowId],
     });
-    console.log("[DEBUG MARK USED] Rows affected:", result.rowsAffected);
+
 }
 
 /**
@@ -593,14 +593,11 @@ export async function findDepositActivityByFilters(
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} LIMIT 1;`;
 
-    // Debug logging
-    console.log("[DEBUG] Query SQL:", sql);
-    console.log("[DEBUG] Query Args:", args);
-    console.log("[DEBUG] Filters:", filters);
+
 
     const result = await turso.execute({ sql, args });
 
-    console.log("[DEBUG] Result rows count:", result.rows.length);
+
 
     if (result.rows.length === 0) return null;
 
@@ -611,7 +608,7 @@ export async function findDepositActivityByFilters(
         record[col] = row[idx];
     });
 
-    console.log("[DEBUG QUERY RESULT] USED:", record.USED, "TIMES_USED:", record.TIMES_USED, "rowid:", record.__rowid);
+
 
     return record as (Record<string, unknown> & { __rowid?: number | null });
 }

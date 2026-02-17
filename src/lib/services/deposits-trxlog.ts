@@ -234,10 +234,10 @@ export async function migrateDepositsTrxLogUsedColumns(): Promise<void> {
         await turso.execute(
             `ALTER TABLE ${DEPOSITS_TRXLOG_TABLE} ADD COLUMN "USED" INTEGER DEFAULT 0;`
         );
-        console.log("[MIGRATION] Added USED column to deposits_trxlog");
+
     } catch (error) {
         // Column might already exist, ignore error
-        console.log("[MIGRATION] USED column already exists or error:", error);
+
     }
 
     // Try to add TIMES_USED column
@@ -245,10 +245,10 @@ export async function migrateDepositsTrxLogUsedColumns(): Promise<void> {
         await turso.execute(
             `ALTER TABLE ${DEPOSITS_TRXLOG_TABLE} ADD COLUMN "TIMES_USED" INTEGER DEFAULT 0;`
         );
-        console.log("[MIGRATION] Added TIMES_USED column to deposits_trxlog");
+
     } catch (error) {
         // Column might already exist, ignore error
-        console.log("[MIGRATION] TIMES_USED column already exists or error:", error);
+
     }
 }
 
@@ -258,7 +258,7 @@ export async function migrateDepositsTrxLogUsedColumns(): Promise<void> {
 export async function markDepositsTrxLogUsedByRowId(rowId: number): Promise<void> {
     await ensureDepositsTrxLogTable();
 
-    console.log("[DEBUG MARK USED - TRXLOG] Marking rowid:", rowId);
+
 
     const sql = `
         UPDATE ${DEPOSITS_TRXLOG_TABLE}
@@ -268,7 +268,7 @@ export async function markDepositsTrxLogUsedByRowId(rowId: number): Promise<void
     `;
 
     const result = await turso.execute({ sql, args: [rowId] });
-    console.log("[DEBUG MARK USED - TRXLOG] Rows affected:", result.rowsAffected);
+
 }
 
 export type DepositsTrxLogQueryFilters = {
@@ -324,14 +324,9 @@ export async function findDepositsTrxLogByFilters(
     const whereClause = ` WHERE ${conditions.join(" AND ")}`;
     const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_TRXLOG_TABLE}${whereClause} LIMIT 1;`;
 
-    // Debug logging
-    console.log("[DEBUG TRXLOG QUERY] SQL:", sql);
-    console.log("[DEBUG TRXLOG QUERY] Args:", args);
-    console.log("[DEBUG TRXLOG QUERY] Filters:", filters);
+
 
     const result = await turso.execute({ sql, args });
-
-    console.log("[DEBUG TRXLOG QUERY] Result rows count:", result.rows.length);
 
     if (result.rows.length === 0) return null;
 
@@ -341,15 +336,6 @@ export async function findDepositsTrxLogByFilters(
     result.columns.forEach((col, idx) => {
         record[col] = row[idx];
     });
-
-    console.log(
-        "[DEBUG TRXLOG QUERY RESULT] USED:",
-        record.USED,
-        "TIMES_USED:",
-        record.TIMES_USED,
-        "rowid:",
-        record.__rowid
-    );
 
     return record as Record<string, unknown> & { __rowid?: number | null };
 }

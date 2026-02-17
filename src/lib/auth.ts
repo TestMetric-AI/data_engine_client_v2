@@ -12,7 +12,8 @@ const REFRESH_TOKEN_EXPIRES = parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES || 
 const IDLE_TIMEOUT = parseInt(process.env.JWT_IDLE_TIMEOUT || "1800"); // 30 minutes
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma as any),
+    // @ts-expect-error — @next-auth/prisma-adapter v1 types target Prisma 4/5; safe at runtime with Prisma 7
+    adapter: PrismaAdapter(prisma),
     session: {
         strategy: "jwt",
         maxAge: REFRESH_TOKEN_EXPIRES, // Maximum session duration (14 days)

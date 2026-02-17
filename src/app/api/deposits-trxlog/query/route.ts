@@ -48,8 +48,6 @@ export async function GET(request: NextRequest) {
         COD_TRANSACCION: getValue("COD_TRANSACCION"),
     };
 
-    // Debug: Log query params
-    console.log("[DEBUG TRXLOG ENDPOINT] All params:", Object.fromEntries(searchParams.entries()));
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {

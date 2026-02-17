@@ -33,10 +33,6 @@ export async function GET(request: NextRequest) {
         EXISTS: getBooleanValue("EXISTS"),
     };
 
-    // Debug: Log raw query params
-    console.log("[DEBUG ENDPOINT] Raw EXISTS param:", searchParams.get("EXISTS"));
-    console.log("[DEBUG ENDPOINT] Parsed EXISTS:", getBooleanValue("EXISTS"));
-    console.log("[DEBUG ENDPOINT] All params:", Object.fromEntries(searchParams.entries()));
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {
