@@ -3,7 +3,10 @@ import { authOptions } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import jwt from "jsonwebtoken";
 
-const SECRET = process.env.NEXTAUTH_SECRET || "fallback_secret";
+if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error("NEXTAUTH_SECRET environment variable is required. Cannot start without it.");
+}
+const SECRET = process.env.NEXTAUTH_SECRET;
 
 /**
  * Verifies if the request is authenticated via User Session or API Token (JWT).

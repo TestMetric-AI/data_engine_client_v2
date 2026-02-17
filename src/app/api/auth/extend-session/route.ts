@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { sessionLogger } from "@/lib/session-logger";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function POST(req: NextRequest) {
     try {
@@ -27,10 +28,6 @@ export async function POST(req: NextRequest) {
             timestamp: new Date().toISOString(),
         });
     } catch (error) {
-        console.error("Error extending session:", error);
-        return NextResponse.json(
-            { error: "Failed to extend session" },
-            { status: 500 }
-        );
+        return handleApiError(error, "extending session");
     }
 }

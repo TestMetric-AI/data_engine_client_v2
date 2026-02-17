@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findDepositActivityByFilters, markDepositActivityUsedByRowId, DepositActivityQueryFilters } from "@/lib/services/deposit-activity";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -33,10 +34,6 @@ export async function GET(request: NextRequest) {
         EXISTS: getBooleanValue("EXISTS"),
     };
 
-    // Debug: Log raw query params
-    console.log("[DEBUG ENDPOINT] Raw EXISTS param:", searchParams.get("EXISTS"));
-    console.log("[DEBUG ENDPOINT] Parsed EXISTS:", getBooleanValue("EXISTS"));
-    console.log("[DEBUG ENDPOINT] All params:", Object.fromEntries(searchParams.entries()));
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {
@@ -78,7 +75,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ data: rest });
 
     } catch (error) {
-        console.error("Error querying deposit activity:", error);
-        return NextResponse.json({ message: "No se pudo consultar la informacion." }, { status: 500 });
+        return handleApiError(error, "querying deposit activity");
     }
 }

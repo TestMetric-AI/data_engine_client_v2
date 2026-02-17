@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyApiAuth } from "@/lib/auth-helper";
 import { updateCustomerLegalInfo } from "@/lib/services/deposits";
 import { z } from "zod";
+import { handleApiError } from "@/lib/api-error-handler";
 
 const updateSchema = z.object({
     legalId: z.string().min(1, "El LEGAL_ID es requerido"),
@@ -39,10 +40,6 @@ export async function PATCH(
             updatedCount,
         });
     } catch (error) {
-        console.error("Error updating customer:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "updating customer legal info");
     }
 }

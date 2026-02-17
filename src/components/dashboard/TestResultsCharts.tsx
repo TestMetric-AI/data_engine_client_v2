@@ -1,6 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
 import type { ReactNode } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
     PieChart,
     Pie,
@@ -24,7 +26,14 @@ import type {
     FlakyTest,
     ProjectBreakdown,
     TestResultsDashboardData,
+    DashboardFilters,
 } from "@/lib/services/test-results-dashboard";
+
+type FilterOptions = {
+    projects: string[];
+    pipelines: string[];
+    environments: string[];
+};
 
 // --- Color palette ---
 const STATUS_COLORS: Record<string, string> = {
@@ -413,14 +422,101 @@ function BranchHealth({ data }: { data: TestResultsDashboardData["recentBranches
     );
 }
 
+// --- Filter Bar ---
+function FilterBar({
+    filterOptions,
+    currentFilters,
+}: {
+    filterOptions: FilterOptions;
+    currentFilters: DashboardFilters;
+}) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const updateFilter = useCallback(
+        (key: string, value: string) => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (value) {
+                params.set(key, value);
+            } else {
+                params.delete(key);
+            }
+            router.push(`${pathname}?${params.toString()}`);
+        },
+        [router, pathname, searchParams],
+    );
+
+    const clearAll = useCallback(() => {
+        router.push(pathname);
+    }, [router, pathname]);
+
+    const hasActiveFilters = !!(currentFilters.testProject || currentFilters.pipelineId || currentFilters.environment);
+
+    return (
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+            <select
+                value={currentFilters.testProject || ""}
+                onChange={(e) => updateFilter("testProject", e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+                <option value="">All Projects</option>
+                {filterOptions.projects.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                ))}
+            </select>
+
+            <select
+                value={currentFilters.pipelineId || ""}
+                onChange={(e) => updateFilter("pipelineId", e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+                <option value="">All Pipelines</option>
+                {filterOptions.pipelines.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                ))}
+            </select>
+
+            <select
+                value={currentFilters.environment || ""}
+                onChange={(e) => updateFilter("environment", e.target.value)}
+                className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+                <option value="">All Environments</option>
+                {filterOptions.environments.map((e) => (
+                    <option key={e} value={e}>{e}</option>
+                ))}
+            </select>
+
+            {hasActiveFilters && (
+                <button
+                    onClick={clearAll}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
+                >
+                    Clear filters
+                </button>
+            )}
+        </div>
+    );
+}
+
 // --- Main Export ---
-export default function TestResultsCharts({ data }: { data: TestResultsDashboardData }) {
+export default function TestResultsCharts({
+    data,
+    filterOptions,
+    currentFilters,
+}: {
+    data: TestResultsDashboardData;
+    filterOptions: FilterOptions;
+    currentFilters: DashboardFilters;
+}) {
     const hasData = data.totalTests > 0;
 
     if (!hasData) {
         return (
             <div className="mt-10">
                 <h2 className="mb-4 font-display text-xl font-semibold text-text-primary">Test Results</h2>
+                <FilterBar filterOptions={filterOptions} currentFilters={currentFilters} />
                 <Card>
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface">
@@ -441,6 +537,9 @@ export default function TestResultsCharts({ data }: { data: TestResultsDashboard
     return (
         <div className="mt-10">
             <h2 className="mb-6 font-display text-xl font-semibold text-text-primary">Test Results</h2>
+
+            {/* Filter bar */}
+            <FilterBar filterOptions={filterOptions} currentFilters={currentFilters} />
 
             {/* Summary stats */}
             <SummaryStats

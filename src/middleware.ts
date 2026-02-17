@@ -42,7 +42,7 @@ export default withAuth(
     {
         callbacks: {
             authorized: ({ req, token }) => {
-                const protectedPaths = ["/dashboard", "/datasets", "/pipelines", "/admin", "/management"];
+                const protectedPaths = ["/dashboard", "/datasets", "/pipelines", "/admin", "/management", "/test-information"];
                 const isProtected = protectedPaths.some((path) =>
                     req.nextUrl.pathname.startsWith(path)
                 );
@@ -66,5 +66,6 @@ export const config = {
         "/pipelines/:path*",
         "/admin/:path*",
         "/management/:path*",
+        "/test-information/:path*",
     ],
 };

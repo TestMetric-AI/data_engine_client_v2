@@ -7,6 +7,7 @@ import {
     DepositActivityListFilters,
 } from "@/lib/services/deposit-activity";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -58,11 +59,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error listing deposit activity:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "listing deposit activity");
     }
 }
 
@@ -104,11 +101,7 @@ export async function PATCH(request: NextRequest) {
             updated: result.updated,
         });
     } catch (error) {
-        console.error("Error updating deposit activity EXISTS:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "updating deposit activity EXISTS");
     }
 }
 
@@ -162,10 +155,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error("Error uploading deposit activity:", error);
-        return NextResponse.json(
-            { message: "No se pudo procesar el archivo." },
-            { status: 500 }
-        );
+        return handleApiError(error, "uploading deposit activity");
     }
 }

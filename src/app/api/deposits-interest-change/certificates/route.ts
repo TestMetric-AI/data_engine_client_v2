@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllCertificateNumbers } from "@/lib/services/deposits-interest-change";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -15,10 +16,6 @@ export async function GET(request: NextRequest) {
             total: certificateNumbers.length,
         });
     } catch (error) {
-        console.error("Error fetching certificate numbers:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "fetching certificate numbers for interest-change");
     }
 }

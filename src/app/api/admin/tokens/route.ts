@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { handleApiError } from "@/lib/api-error-handler";
 
-const SECRET = process.env.NEXTAUTH_SECRET || "fallback_secret";
+if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error("NEXTAUTH_SECRET environment variable is required. Cannot start without it.");
+}
+const SECRET = process.env.NEXTAUTH_SECRET;
 
 export async function POST(req: NextRequest) {
     try {
@@ -55,10 +59,6 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error) {
-        console.error("Token generation error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return handleApiError(error, "generating token");
     }
 }

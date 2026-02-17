@@ -7,6 +7,7 @@ import {
     listDepositsTrxLog,
     getDepositsTrxLogCount,
 } from "@/lib/services/deposits-trxlog";
+import { handleApiError } from "@/lib/api-error-handler";
 
 /**
  * GET /api/deposits-trxlog
@@ -43,11 +44,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error listing deposits_trxlog:", error);
-        return NextResponse.json(
-            { message: "Failed to retrieve data" },
-            { status: 500 }
-        );
+        return handleApiError(error, "listing deposits-trxlog");
     }
 }
 
@@ -107,11 +104,7 @@ export async function POST(request: NextRequest) {
             totalRecords: totalCount,
             mode,
         });
-    } catch (error: any) {
-        console.error("Error uploading deposits_trxlog:", error);
-        return NextResponse.json(
-            { message: error.message || "Upload failed" },
-            { status: 500 }
-        );
+    } catch (error) {
+        return handleApiError(error, "uploading deposits-trxlog");
     }
 }

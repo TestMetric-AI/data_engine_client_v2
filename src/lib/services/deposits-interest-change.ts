@@ -1,6 +1,15 @@
 import { parse } from "csv-parse/sync";
 import { z } from "zod";
 import { turso } from "@/lib/turso";
+import type { InValue } from "@libsql/client";
+import {
+    createWhereClause,
+    addExactFilters,
+    addDateRange,
+    toWhereSQL,
+    rowToRecord,
+    rowsToRecords,
+} from "./query-builder";
 
 export const DEPOSITS_INTEREST_CHANGE_TABLE = "deposits_interest_change";
 
@@ -340,7 +349,7 @@ export async function insertDepositsInterestChange(rows: DepositsInterestChangeR
 
             await transaction.execute({
                 sql: batchInsertSql,
-                args: batchValues as any[],
+                args: batchValues as InValue[],
             });
         }
         await transaction.commit();
@@ -384,57 +393,34 @@ export async function listDepositsInterestChange(
 ): Promise<DepositsInterestChangePage> {
     await ensureDepositsInterestChangeTable();
 
-    const conditions: string[] = [];
-    const args: any[] = [];
+    const wc = createWhereClause();
 
-    // Build WHERE clause if filters are provided
     if (filters) {
-        const exactFilters: Array<keyof DepositsInterestChangePaginationFilters> = [
+        addExactFilters(wc, filters, [
             "NUM_CERTIFICADO",
             "USUARIO_CAMBIO_TASA",
             "INTEREST_TYPE",
-        ];
+        ]);
 
-        for (const key of exactFilters) {
-            const value = filters[key];
-            if (value) {
-                conditions.push(`"${key}" = ?`);
-                args.push(value);
-            }
-        }
-
-        if (filters.FECHA_CAMBIO_TASA_DESDE && filters.FECHA_CAMBIO_TASA_HASTA) {
-            conditions.push(`"FECHA_CAMBIO_TASA" BETWEEN ? AND ?`);
-            args.push(filters.FECHA_CAMBIO_TASA_DESDE);
-            args.push(filters.FECHA_CAMBIO_TASA_HASTA);
-        }
+        addDateRange(wc, filters, "FECHA_CAMBIO_TASA_DESDE", "FECHA_CAMBIO_TASA_HASTA", "FECHA_CAMBIO_TASA");
     }
 
-    const whereClause =
-        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const whereSQL = toWhereSQL(wc);
 
     const countResult = await turso.execute({
-        sql: `SELECT COUNT(*) as total FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereClause};`,
-        args: args,
+        sql: `SELECT COUNT(*) as total FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereSQL};`,
+        args: wc.args,
     });
     const total = Number(countResult.rows[0][0] ?? 0);
 
     const dataResult = await turso.execute({
-        sql: `SELECT * FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereClause}
+        sql: `SELECT * FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereSQL}
           ORDER BY FECHA_CAMBIO_TASA DESC, NUM_CERTIFICADO ASC
           LIMIT ? OFFSET ?;`,
-        args: [...args, limit, offset],
+        args: [...wc.args, limit, offset],
     });
 
-    const rows = dataResult.rows.map((row) => {
-        const record: Record<string, unknown> = {};
-        dataResult.columns.forEach((col, idx) => {
-            record[col] = row[idx];
-        });
-        return record;
-    });
-
-    return { rows, total };
+    return { rows: rowsToRecords(dataResult), total };
 }
 
 function normalizeValue(
@@ -568,46 +554,20 @@ export async function findInterestChangeByFilters(
 ): Promise<Record<string, unknown> | null> {
     await ensureDepositsInterestChangeTable();
 
-    const conditions: string[] = [];
-    const args: any[] = [];
+    const wc = createWhereClause();
 
-    // Exact match filters
-    const exactFilters: Array<keyof DepositsInterestChangeQueryFilters> = [
+    addExactFilters(wc, filters, [
         "NUM_CERTIFICADO",
         "INTEREST_TYPE",
-    ];
+    ]);
 
-    for (const key of exactFilters) {
-        const value = filters[key];
-        if (value) {
-            conditions.push(`"${key}" = ?`);
-            args.push(value);
-        }
-    }
+    addDateRange(wc, filters, "FECHA_CAMBIO_TASA_DESDE", "FECHA_CAMBIO_TASA_HASTA", "FECHA_CAMBIO_TASA");
 
-    // Date range filter
-    if (filters.FECHA_CAMBIO_TASA_DESDE && filters.FECHA_CAMBIO_TASA_HASTA) {
-        conditions.push(`"FECHA_CAMBIO_TASA" BETWEEN ? AND ?`);
-        args.push(filters.FECHA_CAMBIO_TASA_DESDE);
-        args.push(filters.FECHA_CAMBIO_TASA_HASTA);
-    }
-
-    const whereClause =
-        conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
-
-    const sql = `SELECT * FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${whereClause} LIMIT 1;`;
-
-    const result = await turso.execute({ sql, args });
+    const sql = `SELECT * FROM ${DEPOSITS_INTEREST_CHANGE_TABLE}${toWhereSQL(wc)} LIMIT 1;`;
+    const result = await turso.execute({ sql, args: wc.args });
 
     if (result.rows.length === 0) return null;
 
-    // Convert row to record
-    const row = result.rows[0];
-    const record: Record<string, unknown> = {};
-    result.columns.forEach((col, idx) => {
-        record[col] = row[idx];
-    });
-
-    return record;
+    return rowToRecord(result);
 }
 

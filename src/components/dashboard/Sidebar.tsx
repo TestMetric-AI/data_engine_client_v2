@@ -40,6 +40,7 @@ const navSections: NavSection[] = [
     category: "Overview",
     items: [
       { label: "Dashboard", href: "/dashboard", icon: LayerIcon },
+      { label: "Test Information", href: "/test-information", icon: LayerIcon },
     ],
   },
   {
@@ -125,8 +126,8 @@ const SidebarItem = ({ item, isCollapsed, pathname }: { item: NavItem, isCollaps
               key={subItem.href}
               href={subItem.href}
               className={`ml-11 rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-surface ${pathname === subItem.href
-                  ? "bg-surface text-text-primary"
-                  : "text-text-secondary"
+                ? "bg-surface text-text-primary"
+                : "text-text-secondary"
                 }`}
             >
               {subItem.label}
@@ -141,8 +142,8 @@ const SidebarItem = ({ item, isCollapsed, pathname }: { item: NavItem, isCollaps
     <Link
       href={item.href || "#"}
       className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-surface ${isActive
-          ? "bg-primary text-white shadow-sm"
-          : "text-text-secondary"
+        ? "bg-primary text-white shadow-sm"
+        : "text-text-secondary"
         } ${isCollapsed ? "justify-center px-2" : ""}`}
     >
       <Icon className="h-5 w-5 shrink-0" />

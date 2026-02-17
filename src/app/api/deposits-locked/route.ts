@@ -6,6 +6,7 @@ import {
     parseDepositsLockedCsv,
 } from "@/lib/services/deposits-locked";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -60,11 +61,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error listing deposits locked:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "listing deposits locked");
     }
 }
 
@@ -118,10 +115,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error("Error uploading deposits locked:", error);
-        return NextResponse.json(
-            { message: "No se pudo procesar el archivo." },
-            { status: 500 }
-        );
+        return handleApiError(error, "uploading deposits locked");
     }
 }

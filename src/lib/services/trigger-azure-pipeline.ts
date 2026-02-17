@@ -1,119 +1,68 @@
 import axios from "axios";
-import dotenv from "dotenv";
 
-dotenv.config();
+// ── Pipeline configuration ─────────────────────────────────────────
 
 const ENDPOINT = `${process.env.AZURE_BASE_URL}${process.env.AZURE_PROJECT_NAME}/_apis/pipelines/${process.env.AZURE_PIPELINE_ID}/runs?api-version=7.1`;
 
-const LEGAL_ENRICHMENT_DP10_PAYLOAD = {
-    "resources": {
-        "repositories": {
-            "self": {
-                "refName": "refs/heads/master"
-            }
-        }
-    },
-    "templateParameters": {
-        "repository": "BHD-AutomatizacionT24JS",
-        "branch": "feat/portal-script",
-        "command": "npx playwright test --grep @legal-enrichment-dp10 --project chromium"
-    }
-};
+function buildPayload(grepTag: string) {
+    return {
+        resources: {
+            repositories: {
+                self: {
+                    refName: "refs/heads/master",
+                },
+            },
+        },
+        templateParameters: {
+            repository: "BHD-AutomatizacionT24JS",
+            branch: "feat/portal-script",
+            command: `npx playwright test --grep ${grepTag} --project chromium`,
+        },
+    };
+}
 
+function getAuthHeader(): string {
+    return `Basic ${Buffer.from(`:${process.env.AZURE_PAT}`).toString("base64")}`;
+}
 
-const INTEREST_TYPE_ENRICHMENT_DP10_PAYLOAD = {
-    "resources": {
-        "repositories": {
-            "self": {
-                "refName": "refs/heads/master"
-            }
-        }
-    },
-    "templateParameters": {
-        "repository": "BHD-AutomatizacionT24JS",
-        "branch": "feat/portal-script",
-        "command": "npx playwright test --grep @interest-type-enrichment --project chromium"
-    }
-};
+// ── Generic trigger ────────────────────────────────────────────────
 
-const EXISTS_DEPOSIT_ACTIVITY_ENRICHMENT_DP10_PAYLOAD = {
-    "resources": {
-        "repositories": {
-            "self": {
-                "refName": "refs/heads/master"
-            }
-        }
-    },
-    "templateParameters": {
-        "repository": "BHD-AutomatizacionT24JS",
-        "branch": "feat/portal-script",
-        "command": "npx playwright test --grep @exists-deposit-activity-enrichment --project chromium"
-    }
-};
-
-
-export async function triggerAzurePipelineForLegalEnrichmentDP10() {
-    console.log("Triggering Azure Pipeline");
+/**
+ * Trigger an Azure DevOps pipeline run for the given Playwright grep tag.
+ *
+ * @param grepTag - The `--grep` value passed to Playwright (e.g. `@legal-enrichment-dp10`)
+ * @throws Re-throws the underlying axios error after logging
+ */
+export async function triggerAzurePipeline(grepTag: string): Promise<void> {
+    console.log(`Triggering Azure Pipeline for: ${grepTag}`);
     try {
-        const response = await axios.post(ENDPOINT, LEGAL_ENRICHMENT_DP10_PAYLOAD, {
+        const response = await axios.post(ENDPOINT, buildPayload(grepTag), {
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Basic ${Buffer.from(`:${process.env.AZURE_PATH}`).toString('base64')}`,
+                Authorization: getAuthHeader(),
             },
         });
         console.log("Azure Pipeline Triggered Successfully");
         console.log(response.data);
-    } catch (error: any) {
-        console.error("Error Triggering Azure Pipeline");
-        if (error.response) {
+    } catch (error: unknown) {
+        console.error(`Error Triggering Azure Pipeline for: ${grepTag}`);
+        if (axios.isAxiosError(error) && error.response) {
             console.error("Status:", error.response.status);
             console.error("Data:", JSON.stringify(error.response.data, null, 2));
-        } else {
+        } else if (error instanceof Error) {
             console.error(error.message);
         }
+        throw error;
     }
 }
 
-export async function triggerAzurePipelineForInterestTypeEnrichmentDP10() {
-    console.log("Triggering Azure Pipeline");
-    try {
-        const response = await axios.post(ENDPOINT, INTEREST_TYPE_ENRICHMENT_DP10_PAYLOAD, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Basic ${Buffer.from(`:${process.env.AZURE_PATH}`).toString('base64')}`,
-            },
-        });
-        console.log("Azure Pipeline Triggered Successfully");
-        console.log(response.data);
-    } catch (error: any) {
-        console.error("Error Triggering Azure Pipeline");
-        if (error.response) {
-            console.error("Status:", error.response.status);
-            console.error("Data:", JSON.stringify(error.response.data, null, 2));
-        } else {
-            console.error(error.message);
-        }
-    }
-}
+// ── Named convenience exports (backward-compatible) ────────────────
 
-export async function triggerAzurePipelineForExistsDepositActivityEnrichmentDP10() {
-    console.log("Triggering Azure Pipeline");
-    try {
-        const response = await axios.post(ENDPOINT, EXISTS_DEPOSIT_ACTIVITY_ENRICHMENT_DP10_PAYLOAD, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Basic ${Buffer.from(`:${process.env.AZURE_PATH}`).toString('base64')}`,
-            },
-        });
-        console.log("Azure Pipeline Triggered Successfully");
-        console.log(response.data);
-    } catch (error: any) {
-        console.error("Error Triggering Azure Pipeline");
-        if (error.response) {
-            console.error("Status:", error.response.status);
-            console.error("Data:", JSON.stringify(error.response.data, null, 2));
-        } else {
-            console.error(error.message);
-        }
-    }
-}
+export const triggerAzurePipelineForLegalEnrichmentDP10 = () =>
+    triggerAzurePipeline("@legal-enrichment-dp10");
+
+export const triggerAzurePipelineForInterestTypeEnrichmentDP10 = () =>
+    triggerAzurePipeline("@interest-type-enrichment");
+
+export const triggerAzurePipelineForExistsDepositActivityEnrichmentDP10 = () =>
+    triggerAzurePipeline("@exists-deposit-activity-enrichment");

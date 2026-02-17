@@ -1,4 +1,11 @@
 import prisma from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
+
+export type DashboardFilters = {
+    testProject?: string;
+    pipelineId?: string;
+    environment?: string;
+};
 
 export type StatusDistribution = {
     status: string;
@@ -51,9 +58,37 @@ export type TestResultsDashboardData = {
     recentBranches: { branch: string; total: number; passed: number; failed: number }[];
 };
 
-export async function getTestResultsDashboardData(): Promise<TestResultsDashboardData> {
+export async function getDashboardFilterOptions() {
+    const [projects, pipelines, environments] = await Promise.all([
+        prisma.testResult.findMany({ select: { testProject: true }, distinct: ["testProject"], where: { testProject: { not: null } } }),
+        prisma.testResult.findMany({ select: { pipelineId: true }, distinct: ["pipelineId"], where: { pipelineId: { not: null } } }),
+        prisma.testResult.findMany({ select: { environment: true }, distinct: ["environment"], where: { environment: { not: null } } }),
+    ]);
+    return {
+        projects: projects.map(p => p.testProject!).filter(Boolean).sort(),
+        pipelines: pipelines.map(p => p.pipelineId!).filter(Boolean).sort(),
+        environments: environments.map(e => e.environment!).filter(Boolean).sort(),
+    };
+}
+
+export async function getTestResultsDashboardData(filters?: DashboardFilters): Promise<TestResultsDashboardData> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Build Prisma where clause with optional filters
+    const baseWhere: Prisma.TestResultWhereInput = {
+        createdAt: { gte: thirtyDaysAgo },
+        ...(filters?.testProject && { testProject: filters.testProject }),
+        ...(filters?.pipelineId && { pipelineId: filters.pipelineId }),
+        ...(filters?.environment && { environment: filters.environment }),
+    };
+
+    // Build raw SQL WHERE clause with optional filters
+    const conditions = [Prisma.sql`created_at >= ${thirtyDaysAgo}`];
+    if (filters?.testProject) conditions.push(Prisma.sql`test_project = ${filters.testProject}`);
+    if (filters?.pipelineId) conditions.push(Prisma.sql`pipeline_id = ${filters.pipelineId}`);
+    if (filters?.environment) conditions.push(Prisma.sql`environment = ${filters.environment}`);
+    const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 
     // Run all queries in parallel
     const [
@@ -69,28 +104,25 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
     ] = await Promise.all([
         // Total tests in last 30 days
         prisma.testResult.count({
-            where: { createdAt: { gte: thirtyDaysAgo } },
+            where: baseWhere,
         }),
 
         // Total failures
         prisma.testResult.count({
-            where: {
-                createdAt: { gte: thirtyDaysAgo },
-                testStatus: "failed",
-            },
+            where: { ...baseWhere, testStatus: "failed" },
         }),
 
         // Average duration
         prisma.testResult.aggregate({
             _avg: { duration: true },
-            where: { createdAt: { gte: thirtyDaysAgo } },
+            where: baseWhere,
         }),
 
         // Status distribution
         prisma.testResult.groupBy({
             by: ["testStatus"],
             _count: { id: true },
-            where: { createdAt: { gte: thirtyDaysAgo } },
+            where: baseWhere,
         }),
 
         // Daily trend (raw query for date grouping)
@@ -99,7 +131,7 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
         >`
             SELECT DATE(created_at) as date, test_status as status, COUNT(*)::int as count
             FROM test_results
-            WHERE created_at >= ${thirtyDaysAgo}
+            ${whereClause}
             GROUP BY DATE(created_at), test_status
             ORDER BY date ASC
         `,
@@ -113,7 +145,7 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
                    MAX(duration)::int as max_duration,
                    COUNT(*)::int as run_count
             FROM test_results
-            WHERE created_at >= ${thirtyDaysAgo}
+            ${whereClause}
             GROUP BY test_title, test_file
             HAVING COUNT(*) >= 2
             ORDER BY avg_duration DESC
@@ -129,7 +161,7 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
                    COUNT(*) FILTER (WHERE test_status = 'passed')::int as pass_count,
                    COUNT(*) FILTER (WHERE test_status = 'failed')::int as fail_count
             FROM test_results
-            WHERE created_at >= ${thirtyDaysAgo}
+            ${whereClause}
             GROUP BY test_title, test_file
             HAVING COUNT(*) FILTER (WHERE test_status = 'passed') > 0
                AND COUNT(*) FILTER (WHERE test_status = 'failed') > 0
@@ -146,7 +178,7 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
                    COUNT(*) FILTER (WHERE test_status = 'passed')::int as passed,
                    COUNT(*) FILTER (WHERE test_status = 'failed')::int as failed
             FROM test_results
-            WHERE created_at >= ${thirtyDaysAgo}
+            ${whereClause}
             GROUP BY test_project
             ORDER BY total DESC
             LIMIT 10
@@ -161,7 +193,7 @@ export async function getTestResultsDashboardData(): Promise<TestResultsDashboar
                    COUNT(*) FILTER (WHERE test_status = 'passed')::int as passed,
                    COUNT(*) FILTER (WHERE test_status = 'failed')::int as failed
             FROM test_results
-            WHERE created_at >= ${thirtyDaysAgo} AND branch IS NOT NULL
+            ${whereClause} AND branch IS NOT NULL
             GROUP BY branch
             ORDER BY MAX(created_at) DESC
             LIMIT 8

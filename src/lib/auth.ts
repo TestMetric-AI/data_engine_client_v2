@@ -12,7 +12,8 @@ const REFRESH_TOKEN_EXPIRES = parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES || 
 const IDLE_TIMEOUT = parseInt(process.env.JWT_IDLE_TIMEOUT || "1800"); // 30 minutes
 
 export const authOptions: NextAuthOptions = {
-    adapter: PrismaAdapter(prisma as any),
+    // @ts-expect-error — @next-auth/prisma-adapter v1 types target Prisma 4/5; safe at runtime with Prisma 7
+    adapter: PrismaAdapter(prisma),
     session: {
         strategy: "jwt",
         maxAge: REFRESH_TOKEN_EXPIRES, // Maximum session duration (14 days)
@@ -87,14 +88,15 @@ export const authOptions: NextAuthOptions = {
     ],
     callbacks: {
         async session({ session, token }) {
+            // If the JWT was marked as expired, invalidate the session
+            if (token?.error === "SessionExpired") {
+                return { ...session, user: undefined, expires: new Date(0).toISOString() };
+            }
+
             if (token && session.user) {
                 session.user.id = token.id;
                 session.user.roles = token.roles;
                 session.user.permissions = token.permissions;
-
-                // Update last activity timestamp
-                const now = Math.floor(Date.now() / 1000);
-                (session as any).lastActivity = now;
             }
             return session;
         },
@@ -120,8 +122,9 @@ export const authOptions: NextAuthOptions = {
                     token.email as string,
                     "14 days"
                 );
-                // Refresh token expired, force re-login
-                return {} as any; // Return empty token to invalidate session
+                // Mark token as expired — session callback will clear the session
+                token.error = "SessionExpired";
+                return token;
             }
 
             // Check idle timeout (30 minutes of inactivity)
@@ -133,8 +136,9 @@ export const authOptions: NextAuthOptions = {
                     token.email as string,
                     inactiveMinutes
                 );
-                // Session expired due to inactivity
-                return {} as any; // Return empty token to invalidate session
+                // Mark token as expired — session callback will clear the session
+                token.error = "SessionExpired";
+                return token;
             }
 
             // Check if access token needs refresh (15 minutes)
