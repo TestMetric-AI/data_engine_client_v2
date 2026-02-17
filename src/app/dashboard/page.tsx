@@ -10,14 +10,27 @@ import {
     LockClosedIcon,
 } from "@/components/dashboard/icons";
 import { getDashboardStats } from "@/lib/services/dashboard";
-import { getTestResultsDashboardData } from "@/lib/services/test-results-dashboard";
+import { getTestResultsDashboardData, getDashboardFilterOptions } from "@/lib/services/test-results-dashboard";
+import type { DashboardFilters } from "@/lib/services/test-results-dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
-    const [dashboardStats, testResultsData] = await Promise.all([
+export default async function DashboardPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ testProject?: string; pipelineId?: string; environment?: string }>;
+}) {
+    const params = await searchParams;
+    const filters: DashboardFilters = {
+        ...(params.testProject && { testProject: params.testProject }),
+        ...(params.pipelineId && { pipelineId: params.pipelineId }),
+        ...(params.environment && { environment: params.environment }),
+    };
+
+    const [dashboardStats, testResultsData, filterOptions] = await Promise.all([
         getDashboardStats(),
-        getTestResultsDashboardData(),
+        getTestResultsDashboardData(filters),
+        getDashboardFilterOptions(),
     ]);
 
     const stats = [
@@ -106,7 +119,11 @@ export default async function DashboardPage() {
                         )}
 
                         {/* Test Results Section */}
-                        <TestResultsCharts data={testResultsData} />
+                        <TestResultsCharts
+                            data={testResultsData}
+                            filterOptions={filterOptions}
+                            currentFilters={filters}
+                        />
                     </main>
                 </div>
             </div>

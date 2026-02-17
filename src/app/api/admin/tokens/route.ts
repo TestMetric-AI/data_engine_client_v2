@@ -3,7 +3,10 @@ import prisma from "@/lib/db";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 
-const SECRET = process.env.NEXTAUTH_SECRET || "fallback_secret";
+if (!process.env.NEXTAUTH_SECRET) {
+    throw new Error("NEXTAUTH_SECRET environment variable is required. Cannot start without it.");
+}
+const SECRET = process.env.NEXTAUTH_SECRET;
 
 export async function POST(req: NextRequest) {
     try {
