@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function PATCH(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -130,10 +131,6 @@ export async function PATCH(request: NextRequest) {
             total: updates.length,
         });
     } catch (error) {
-        console.error("Error in bulk update:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "bulk updating interest-change");
     }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findDepositsLockedByFilters, markDepositsLockedUsedByRowId, DepositsLockedQueryFilters } from "@/lib/services/deposits-locked";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -44,7 +45,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ data: rest });
 
     } catch (error) {
-        console.error("Error querying deposits locked:", error);
-        return NextResponse.json({ message: "No se pudo consultar la informacion." }, { status: 500 });
+        return handleApiError(error, "querying deposits locked");
     }
 }

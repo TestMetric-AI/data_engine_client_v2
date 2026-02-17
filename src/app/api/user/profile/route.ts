@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { handleApiError } from "@/lib/api-error-handler";
 
 const profileSchema = z.object({
     name: z.string().min(2),
@@ -41,10 +42,6 @@ export async function PUT(req: NextRequest) {
 
         return NextResponse.json({ message: "Profile updated successfully" });
     } catch (error) {
-        console.error("Profile update error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return handleApiError(error, "updating profile");
     }
 }

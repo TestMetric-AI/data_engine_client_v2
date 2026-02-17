@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findInterestChangeByFilters, DepositsInterestChangeQueryFilters } from "@/lib/services/deposits-interest-change";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -52,10 +53,6 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ data: result });
     } catch (error) {
-        console.error("Error querying interest change:", error);
-        return NextResponse.json(
-            { message: "No se pudo consultar la informacion." },
-            { status: 500 }
-        );
+        return handleApiError(error, "querying interest-change");
     }
 }

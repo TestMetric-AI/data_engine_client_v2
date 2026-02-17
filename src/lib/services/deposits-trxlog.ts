@@ -1,6 +1,13 @@
 import { parse } from "csv-parse/sync";
 import { z } from "zod";
 import { turso } from "@/lib/turso";
+import type { InValue } from "@libsql/client";
+import {
+    createWhereClause,
+    addExactFilters,
+    toWhereSQL,
+    rowToRecord,
+} from "./query-builder";
 
 export const DEPOSITS_TRXLOG_TABLE = "deposits_trxlog";
 
@@ -144,7 +151,7 @@ export async function insertDepositsTrxLogBatch(
             )
             .join(", ");
 
-        const values: any[] = [];
+        const values: InValue[] = [];
         for (const record of batch) {
             for (const column of DEPOSITS_TRXLOG_CSV_COLUMNS) {
                 values.push(record[column] || null);
@@ -185,7 +192,7 @@ export async function listDepositsTrxLog(
     await ensureDepositsTrxLogTable();
 
     let whereClause = "";
-    const args: any[] = [];
+    const args: InValue[] = [];
 
     if (search && search.trim().length > 0) {
         const searchPattern = `%${search.trim()}%`;
@@ -305,37 +312,15 @@ export async function findDepositsTrxLogByFilters(
     await ensureDepositsTrxLogTable();
     await migrateDepositsTrxLogUsedColumns();
 
-    const conditions: string[] = [];
-    const args: any[] = [];
+    const wc = createWhereClause(/* unusedOnly */ true);
 
-    // CRITICAL: Only return unused records
-    conditions.push(`("USED" IS NULL OR "USED" = 0)`);
-
-    // Add filter conditions for all possible columns
     const filterKeys = Object.keys(filters) as Array<keyof DepositsTrxLogQueryFilters>;
-    for (const key of filterKeys) {
-        const value = filters[key];
-        if (value) {
-            conditions.push(`"${key}" = ?`);
-            args.push(value);
-        }
-    }
+    addExactFilters(wc, filters, filterKeys);
 
-    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
-    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_TRXLOG_TABLE}${whereClause} LIMIT 1;`;
-
-
-
-    const result = await turso.execute({ sql, args });
+    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSITS_TRXLOG_TABLE}${toWhereSQL(wc)} LIMIT 1;`;
+    const result = await turso.execute({ sql, args: wc.args });
 
     if (result.rows.length === 0) return null;
 
-    // Convert row to record
-    const row = result.rows[0];
-    const record: Record<string, unknown> = {};
-    result.columns.forEach((col, idx) => {
-        record[col] = row[idx];
-    });
-
-    return record as Record<string, unknown> & { __rowid?: number | null };
+    return rowToRecord(result) as Record<string, unknown> & { __rowid?: number | null };
 }

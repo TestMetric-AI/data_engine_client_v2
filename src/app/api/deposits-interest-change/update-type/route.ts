@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateInterestTypeByCertificate } from "@/lib/services/deposits-interest-change";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function PATCH(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -43,10 +44,6 @@ export async function PATCH(request: NextRequest) {
             INTEREST_TYPE,
         });
     } catch (error) {
-        console.error("Error updating interest type:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "updating interest type");
     }
 }

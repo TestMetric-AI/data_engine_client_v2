@@ -4,6 +4,7 @@ import {
     markDepositsTrxLogUsedByRowId,
     DepositsTrxLogQueryFilters,
 } from "@/lib/services/deposits-trxlog";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -83,10 +84,6 @@ export async function GET(request: NextRequest) {
         const { __rowid, ...rest } = result;
         return NextResponse.json({ data: rest });
     } catch (error) {
-        console.error("Error querying deposits trxlog:", error);
-        return NextResponse.json(
-            { message: "Failed to query data." },
-            { status: 500 }
-        );
+        return handleApiError(error, "querying deposits trxlog");
     }
 }

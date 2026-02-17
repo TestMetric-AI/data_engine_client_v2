@@ -1,4 +1,5 @@
 import { turso } from "@/lib/turso";
+import type { InValue } from "@libsql/client";
 import ExcelJS from "exceljs";
 
 export const CLIENT_EXONERATED_TABLE = "client_exonerated";
@@ -189,7 +190,7 @@ export async function insertClientExonerated(
             );
             await transaction.execute({
                 sql: insertSql,
-                args: values as any[],
+                args: values as InValue[],
             });
         }
         await transaction.commit();

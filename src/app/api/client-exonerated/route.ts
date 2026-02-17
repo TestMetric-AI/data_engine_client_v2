@@ -7,6 +7,7 @@ import {
     parseClientExoneratedXlsx,
 } from "@/lib/services/client-exonerated";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -39,11 +40,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error listing client exonerated:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "listing client exonerated");
     }
 }
 
@@ -102,10 +99,6 @@ export async function POST(request: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error("Error uploading client exonerated:", error);
-        return NextResponse.json(
-            { message: "No se pudo procesar el archivo." },
-            { status: 500 }
-        );
+        return handleApiError(error, "uploading client exonerated");
     }
 }

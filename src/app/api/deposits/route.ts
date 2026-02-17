@@ -8,6 +8,7 @@ import {
     ReductionStats,
 } from "@/lib/services/deposits";
 import { verifyApiAuth } from "@/lib/auth-helper";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -65,11 +66,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error listing deposits:", error);
-        return NextResponse.json(
-            { message: "Error interno del servidor." },
-            { status: 500 }
-        );
+        return handleApiError(error, "listing deposits");
     }
 }
 
@@ -148,10 +145,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(response, { status: 201 });
     } catch (error) {
-        console.error("Error uploading deposits:", error);
-        return NextResponse.json(
-            { message: "No se pudo procesar el archivo." },
-            { status: 500 }
-        );
+        return handleApiError(error, "uploading deposits");
     }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import { requireApi, Permission } from "@/lib/rbac";
+import { handleApiError } from "@/lib/api-error-handler";
 
 export async function GET(req: NextRequest) {
     const auth = await requireApi(Permission.ADMIN_ROLES);
@@ -17,8 +18,7 @@ export async function GET(req: NextRequest) {
         });
         return NextResponse.json(roles);
     } catch (error) {
-        console.error("Error fetching roles:", error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error, "fetching roles");
     }
 }
 
@@ -52,8 +52,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(role, { status: 201 });
     } catch (error) {
-        console.error("Error creating role:", error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error, "creating role");
     }
 }
 
@@ -81,7 +80,6 @@ export async function PATCH(req: NextRequest) {
 
         return NextResponse.json(role);
     } catch (error) {
-        console.error("Error updating role:", error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error, "updating role");
     }
 }

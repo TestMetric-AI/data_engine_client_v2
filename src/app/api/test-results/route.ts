@@ -3,6 +3,7 @@ import { verifyApiAuth } from "@/lib/auth-helper";
 import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
+import { handleApiError } from "@/lib/api-error-handler";
 
 const testResultSchema = z.object({
     testTitle: z.string().min(1),
@@ -59,10 +60,6 @@ export async function POST(request: NextRequest) {
             { status: 201 },
         );
     } catch (error) {
-        console.error("Error saving test results:", error);
-        return NextResponse.json(
-            { message: "Internal Server Error" },
-            { status: 500 },
-        );
+        return handleApiError(error, "saving test results");
     }
 }

@@ -3,6 +3,7 @@ import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { requireApi, Permission } from "@/lib/rbac";
+import { handleApiError } from "@/lib/api-error-handler";
 
 const registerSchema = z.object({
     email: z.string().email(),
@@ -67,11 +68,7 @@ export async function POST(req: NextRequest) {
             { status: 201 }
         );
     } catch (error) {
-        console.error("Registration error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return handleApiError(error, "registering user");
     }
 }
 
@@ -100,11 +97,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(users);
     } catch (error) {
-        console.error("Fetch users error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return handleApiError(error, "fetching users");
     }
 }
 
@@ -145,10 +138,6 @@ export async function PATCH(req: NextRequest) {
 
         return NextResponse.json(updatedUser);
     } catch (error) {
-        console.error("Update user error:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 }
-        );
+        return handleApiError(error, "updating user");
     }
 }

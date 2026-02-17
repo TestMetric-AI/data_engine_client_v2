@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getTestResults } from "./actions";
-import TestResultsTable from "./TestResultsTable";
+import TestResultsTable from "@/app/test-information/TestResultsTable";
 import { PAGE_SIZE } from "./types";
 
 export const dynamic = "force-dynamic";

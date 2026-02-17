@@ -1,6 +1,6 @@
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
-import { requirePermission } from "@/lib/auth-guards";
+import { requireServer } from "@/lib/rbac";
 
 export default async function ManagementLayout({
     children,
@@ -8,7 +8,7 @@ export default async function ManagementLayout({
     children: React.ReactNode;
 }) {
     // 1. Enforce "VIEW_MANAGEMENT" permission for this entire section
-    await requirePermission("VIEW_MANAGEMENT");
+    await requireServer("VIEW_MANAGEMENT");
 
     return (
         <div className="min-h-screen bg-[radial-gradient(circle_at_top,_var(--color-background)_0%,_var(--color-surface)_45%,_#eef2ff_100%)]">

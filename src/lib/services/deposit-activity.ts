@@ -1,6 +1,16 @@
 import { parse } from "csv-parse/sync";
 import { z } from "zod";
 import { turso } from "@/lib/turso";
+import type { InValue } from "@libsql/client";
+import {
+    createWhereClause,
+    addExactFilters,
+    addDateRange,
+    addBooleanFilter,
+    toWhereSQL,
+    rowToRecord,
+    rowsToRecords,
+} from "./query-builder";
 
 export const DEPOSIT_ACTIVITY_TABLE = "deposit_activity";
 
@@ -323,7 +333,7 @@ export async function insertDepositActivity(rows: DepositActivityRow[]): Promise
 
             await transaction.execute({
                 sql: batchInsertSql,
-                args: batchValues as any[],
+                args: batchValues as InValue[],
             });
         }
         await transaction.commit();
@@ -485,51 +495,27 @@ export async function listDepositActivity(
 ): Promise<DepositActivityPage> {
     await ensureDepositActivityTable();
 
-    const conditions: string[] = [];
-    const args: any[] = [];
+    const wc = createWhereClause();
 
-    // Apply filters if provided
     if (filters) {
-        if (filters.NUM_CERTIFICADO) {
-            conditions.push(`"NUM_CERTIFICADO" = ?`);
-            args.push(filters.NUM_CERTIFICADO);
-        }
-        if (filters.ESTADO) {
-            conditions.push(`"ESTADO" = ?`);
-            args.push(filters.ESTADO);
-        }
-        if (filters.ID) {
-            conditions.push(`"ID" = ?`);
-            args.push(filters.ID);
-        }
-        if (filters.EXISTS !== undefined) {
-            conditions.push(`"EXISTS" = ?`);
-            args.push(filters.EXISTS ? 1 : 0);
-        }
+        addExactFilters(wc, filters, ["NUM_CERTIFICADO", "ESTADO", "ID"]);
+        addBooleanFilter(wc, filters, "EXISTS");
     }
 
-    const whereClause = conditions.length > 0 ? ` WHERE ${conditions.join(" AND ")}` : "";
+    const whereSQL = toWhereSQL(wc);
 
     const countResult = await turso.execute({
-        sql: `SELECT COUNT(*) as count FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause};`,
-        args: args,
+        sql: `SELECT COUNT(*) as count FROM ${DEPOSIT_ACTIVITY_TABLE}${whereSQL};`,
+        args: wc.args,
     });
     const total = Number(countResult.rows[0]?.count ?? 0);
 
     const dataResult = await turso.execute({
-        sql: `SELECT * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} ORDER BY FECHA_REGISTRO DESC LIMIT ? OFFSET ?;`,
-        args: [...args, limit, offset],
+        sql: `SELECT * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereSQL} ORDER BY FECHA_REGISTRO DESC LIMIT ? OFFSET ?;`,
+        args: [...wc.args, limit, offset],
     });
 
-    const rows = dataResult.rows.map((row) => {
-        const record: Record<string, unknown> = {};
-        dataResult.columns.forEach((col, idx) => {
-            record[col] = row[idx];
-        });
-        return record;
-    });
-
-    return { rows, total };
+    return { rows: rowsToRecords(dataResult), total };
 }
 
 export type DepositActivityQueryFilters = {
@@ -554,13 +540,9 @@ export async function findDepositActivityByFilters(
 ): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
     await ensureDepositActivityTable();
 
-    const conditions: string[] = [];
-    const args: any[] = [];
+    const wc = createWhereClause(/* unusedOnly */ true);
 
-    // CRITICAL: Only return unused records
-    conditions.push(`("USED" IS NULL OR "USED" = 0)`);
-
-    const exactFilters: Array<keyof DepositActivityQueryFilters> = [
+    addExactFilters(wc, filters, [
         "NUM_CERTIFICADO",
         "REFERENCIA",
         "TIPO",
@@ -568,48 +550,16 @@ export async function findDepositActivityByFilters(
         "ESTADO",
         "USUARIO_CREADOR",
         "USUARIO_APROBADOR",
-    ];
+    ]);
 
-    for (const key of exactFilters) {
-        const value = filters[key];
-        if (value) {
-            conditions.push(`"${key}" = ?`);
-            args.push(value);
-        }
-    }
+    addDateRange(wc, filters, "FECHA_REGISTRO_DESDE", "FECHA_REGISTRO_HASTA", "FECHA_REGISTRO");
+    addBooleanFilter(wc, filters, "EXISTS");
 
-    if (filters.FECHA_REGISTRO_DESDE && filters.FECHA_REGISTRO_HASTA) {
-        conditions.push(`"FECHA_REGISTRO" BETWEEN ? AND ?`);
-        args.push(filters.FECHA_REGISTRO_DESDE);
-        args.push(filters.FECHA_REGISTRO_HASTA);
-    }
-
-    // Filter by EXISTS if provided
-    if (filters.EXISTS !== undefined) {
-        conditions.push(`"EXISTS" = ?`);
-        args.push(filters.EXISTS ? 1 : 0);
-    }
-
-    const whereClause = ` WHERE ${conditions.join(" AND ")}`;
-    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSIT_ACTIVITY_TABLE}${whereClause} LIMIT 1;`;
-
-
-
-    const result = await turso.execute({ sql, args });
-
-
+    const sql = `SELECT rowid as __rowid, * FROM ${DEPOSIT_ACTIVITY_TABLE}${toWhereSQL(wc)} LIMIT 1;`;
+    const result = await turso.execute({ sql, args: wc.args });
 
     if (result.rows.length === 0) return null;
 
-    // Convert row to record
-    const row = result.rows[0];
-    const record: Record<string, unknown> = {};
-    result.columns.forEach((col, idx) => {
-        record[col] = row[idx];
-    });
-
-
-
-    return record as (Record<string, unknown> & { __rowid?: number | null });
+    return rowToRecord(result) as (Record<string, unknown> & { __rowid?: number | null });
 }
 
