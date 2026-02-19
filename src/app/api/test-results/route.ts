@@ -19,7 +19,7 @@ const testResultSchema = z.object({
     pipelineId: z.string().max(255).optional(),
     commitSha: z.string().max(40).optional(),
     branch: z.string().max(255).optional(),
-    runUrl: z.string().url().optional(),
+    runUrl: z.string().max(255).optional(),
     provider: z.string().max(50).optional(),
 });
 
