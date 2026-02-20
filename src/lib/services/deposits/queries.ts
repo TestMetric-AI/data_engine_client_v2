@@ -3,7 +3,6 @@
  */
 import { turso } from "@/lib/turso";
 import { DEPOSITS_DP10_TABLE } from "./constants";
-import { ensureDepositsTable } from "./db";
 import {
     createWhereClause,
     addExactFilters,
@@ -20,8 +19,6 @@ import type { DepositsQueryFilters, DepositsPage } from "./types";
 export async function findDepositByFilters(
     filters: DepositsQueryFilters
 ): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
-    await ensureDepositsTable();
-
     const wc = createWhereClause(/* unusedOnly */ true);
 
     addExactFilters(wc, filters, [
@@ -48,8 +45,6 @@ export async function findDepositByFilters(
 // ── Mark as used ───────────────────────────────────────────────────
 
 export async function markDepositUsedByRowId(rowId: number): Promise<void> {
-    await ensureDepositsTable();
-
     await turso.execute({
         sql: `UPDATE ${DEPOSITS_DP10_TABLE}
           SET USED = 1,
@@ -66,8 +61,6 @@ export async function listDeposits(
     offset: number,
     filters?: DepositsQueryFilters
 ): Promise<DepositsPage> {
-    await ensureDepositsTable();
-
     const wc = createWhereClause();
 
     if (filters) {

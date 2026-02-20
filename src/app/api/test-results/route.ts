@@ -4,6 +4,8 @@ import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { handleApiError } from "@/lib/api-error-handler";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 const testResultSchema = z.object({
     testTitle: z.string().min(1),
@@ -54,6 +56,9 @@ export async function POST(request: NextRequest) {
         const { count } = await prisma.testResult.createMany({
             data: items,
         });
+
+        revalidateTag(CACHE_TAGS.TEST_RESULTS_DASHBOARD, "max");
+        revalidateTag(CACHE_TAGS.TEST_INFORMATION, "max");
 
         return NextResponse.json(
             { message: "Test results saved", count },

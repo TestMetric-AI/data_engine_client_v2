@@ -165,6 +165,8 @@ export async function ensureClientExoneratedTable(): Promise<void> {
     ).join(", ");
     const createSql = `CREATE TABLE IF NOT EXISTS ${CLIENT_EXONERATED_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${CLIENT_EXONERATED_TABLE}_personal_id ON ${CLIENT_EXONERATED_TABLE}(NUMBER_PERSONAL_ID);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${CLIENT_EXONERATED_TABLE}_transaction_ref ON ${CLIENT_EXONERATED_TABLE}(TRANSACTION_REF);`);
 }
 
 export async function insertClientExonerated(
@@ -216,8 +218,6 @@ export async function listClientExonerated(
     limit: number,
     offset: number
 ): Promise<ClientExoneratedPage> {
-    await ensureClientExoneratedTable();
-
     const countResult = await turso.execute(
         `SELECT COUNT(*) as total FROM ${CLIENT_EXONERATED_TABLE};`
     );

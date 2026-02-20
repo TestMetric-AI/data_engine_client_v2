@@ -5,8 +5,29 @@ import {
     DepositsTrxLogQueryFilters,
 } from "@/lib/services/deposits-trxlog";
 import { handleApiError } from "@/lib/api-error-handler";
+import { verifyApiAuth } from "@/lib/auth-helper";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logApiRequestMetrics } from "@/lib/request-metrics";
 
 export async function GET(request: NextRequest) {
+    const startedAt = Date.now();
+    const respond = (body: unknown, status = 200) => {
+        logApiRequestMetrics(request, status, startedAt, body);
+        return NextResponse.json(body, { status });
+    };
+
+    if (!(await verifyApiAuth(request))) {
+        return respond({ message: "Unauthorized" }, 401);
+    }
+
+    const rate = checkRateLimit(request, 60, 60_000);
+    if (!rate.allowed) {
+        return respond(
+            { message: "Too many requests", retryAfterSeconds: rate.retryAfterSeconds },
+            429
+        );
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     const getValue = (key: string): string | undefined => {
@@ -52,9 +73,9 @@ export async function GET(request: NextRequest) {
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {
-        return NextResponse.json(
+        return respond(
             { message: "Must provide at least one search parameter." },
-            { status: 400 }
+            400
         );
     }
 
@@ -64,9 +85,9 @@ export async function GET(request: NextRequest) {
     try {
         const result = await findDepositsTrxLogByFilters(filters);
         if (!result) {
-            return NextResponse.json(
+            return respond(
                 { message: "No matching record found." },
-                { status: 404 }
+                404
             );
         }
 
@@ -82,7 +103,7 @@ export async function GET(request: NextRequest) {
         }
 
         const { __rowid, ...rest } = result;
-        return NextResponse.json({ data: rest });
+        return respond({ data: rest });
     } catch (error) {
         return handleApiError(error, "querying deposits trxlog");
     }

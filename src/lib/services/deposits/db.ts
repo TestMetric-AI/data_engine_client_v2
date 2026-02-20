@@ -56,6 +56,11 @@ export async function ensureDepositsTable(): Promise<void> {
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_DP10_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
     await ensureExtraColumns();
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_DP10_TABLE}_customer ON ${DEPOSITS_DP10_TABLE}(ID_CUSTOMER);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_DP10_TABLE}_contract ON ${DEPOSITS_DP10_TABLE}(NUMERO_CONTRATO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_DP10_TABLE}_effective_date ON ${DEPOSITS_DP10_TABLE}(FECHA_EFECTIVA);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_DP10_TABLE}_negotiation_date ON ${DEPOSITS_DP10_TABLE}(FECHA_NEGOCIACION);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_DP10_TABLE}_used ON ${DEPOSITS_DP10_TABLE}(USED);`);
 }
 
 // ── Insert & Clear ─────────────────────────────────────────────────

@@ -2,10 +2,12 @@
 
 import prisma from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { TestResultsFilter, TestResultsResult, TestResultRow } from "./types";
 import { PAGE_SIZE } from "./types";
 
-export async function getTestResults(filter: TestResultsFilter): Promise<TestResultsResult> {
+async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResultsResult> {
   const page = filter.page ?? 1;
   const pageSize = filter.pageSize ?? PAGE_SIZE;
   const skip = (page - 1) * pageSize;
@@ -101,4 +103,17 @@ export async function getTestResults(filter: TestResultsFilter): Promise<TestRes
     branches: branchValues.map((b) => b.branch!).filter(Boolean).sort(),
     environments: environmentValues.map((e) => e.environment!).filter(Boolean).sort(),
   };
+}
+
+export async function getTestResults(filter: TestResultsFilter): Promise<TestResultsResult> {
+  const key = JSON.stringify(filter);
+  const cachedGetter = unstable_cache(
+    () => getTestResultsRaw(filter),
+    ["test-information", key],
+    {
+      revalidate: 300,
+      tags: [CACHE_TAGS.TEST_INFORMATION],
+    }
+  );
+  return cachedGetter();
 }

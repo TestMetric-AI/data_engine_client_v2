@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Sidebar from "@/components/dashboard/Sidebar";
 import StatCard from "@/components/dashboard/StatCard";
 import Topbar from "@/components/dashboard/Topbar";
@@ -13,7 +12,7 @@ import { getDashboardStats } from "@/lib/services/dashboard";
 import { getTestResultsDashboardData, getDashboardFilterOptions } from "@/lib/services/test-results-dashboard";
 import type { DashboardFilters } from "@/lib/services/test-results-dashboard";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function DashboardPage({
     searchParams,

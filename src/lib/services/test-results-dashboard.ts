@@ -1,5 +1,7 @@
 import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 export type DashboardFilters = {
     testProject?: string;
@@ -58,7 +60,7 @@ export type TestResultsDashboardData = {
     recentBranches: { branch: string; total: number; passed: number; failed: number }[];
 };
 
-export async function getDashboardFilterOptions() {
+async function getDashboardFilterOptionsRaw() {
     const [projects, pipelines, environments] = await Promise.all([
         prisma.testResult.findMany({ select: { testProject: true }, distinct: ["testProject"], where: { testProject: { not: null } } }),
         prisma.testResult.findMany({ select: { pipelineId: true }, distinct: ["pipelineId"], where: { pipelineId: { not: null } } }),
@@ -71,7 +73,7 @@ export async function getDashboardFilterOptions() {
     };
 }
 
-export async function getTestResultsDashboardData(filters?: DashboardFilters): Promise<TestResultsDashboardData> {
+async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promise<TestResultsDashboardData> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -280,4 +282,32 @@ export async function getTestResultsDashboardData(filters?: DashboardFilters): P
         projectBreakdown,
         recentBranches,
     };
+}
+
+const getCachedDashboardFilterOptions = unstable_cache(
+    getDashboardFilterOptionsRaw,
+    ["dashboard-filter-options"],
+    {
+        revalidate: 300,
+        tags: [CACHE_TAGS.TEST_RESULTS_DASHBOARD],
+    }
+);
+
+export async function getDashboardFilterOptions() {
+    return getCachedDashboardFilterOptions();
+}
+
+export async function getTestResultsDashboardData(
+    filters?: DashboardFilters
+): Promise<TestResultsDashboardData> {
+    const serializedFilters = JSON.stringify(filters ?? {});
+    const cachedGetter = unstable_cache(
+        () => getTestResultsDashboardDataRaw(filters),
+        ["test-results-dashboard", serializedFilters],
+        {
+            revalidate: 300,
+            tags: [CACHE_TAGS.TEST_RESULTS_DASHBOARD],
+        }
+    );
+    return cachedGetter();
 }

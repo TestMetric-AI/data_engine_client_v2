@@ -7,6 +7,8 @@ import {
 } from "@/lib/services/deposits-locked";
 import { verifyApiAuth } from "@/lib/auth-helper";
 import { handleApiError } from "@/lib/api-error-handler";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -109,6 +111,7 @@ export async function POST(request: NextRequest) {
         }
 
         const inserted = await insertDepositsLocked(parseResult.rows);
+        revalidateTag(CACHE_TAGS.DASHBOARD, "max");
 
         return NextResponse.json(
             { message: "Archivo cargado correctamente.", inserted },

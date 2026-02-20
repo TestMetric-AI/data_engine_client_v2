@@ -239,6 +239,17 @@ export async function ensureDepositsLockedTable(): Promise<void> {
 
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_LOCKED_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
+    try {
+        await turso.execute(`ALTER TABLE ${DEPOSITS_LOCKED_TABLE} ADD COLUMN "USED" INTEGER DEFAULT 0;`);
+    } catch (_error) { }
+    try {
+        await turso.execute(`ALTER TABLE ${DEPOSITS_LOCKED_TABLE} ADD COLUMN "TIMES_USED" INTEGER DEFAULT 0;`);
+    } catch (_error) { }
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_LOCKED_TABLE}_customer ON ${DEPOSITS_LOCKED_TABLE}(ID_CUSTOMER);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_LOCKED_TABLE}_product ON ${DEPOSITS_LOCKED_TABLE}(ID_PRODUCTO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_LOCKED_TABLE}_status ON ${DEPOSITS_LOCKED_TABLE}(ESTADO_BLOQUEO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_LOCKED_TABLE}_start_date ON ${DEPOSITS_LOCKED_TABLE}(FECHA_INICIO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_LOCKED_TABLE}_used ON ${DEPOSITS_LOCKED_TABLE}(USED);`);
 }
 
 export async function insertDepositsLocked(rows: DepositsLockedRow[]): Promise<number> {
@@ -311,8 +322,6 @@ export async function listDepositsLocked(
     offset: number,
     filters?: DepositsLockedPaginationFilters
 ): Promise<DepositsLockedPage> {
-    await ensureDepositsLockedTable();
-
     const wc = createWhereClause();
 
     if (filters) {
@@ -391,8 +400,6 @@ export type DepositsLockedQueryFilters = {
 export async function findDepositsLockedByFilters(
     filters: DepositsLockedQueryFilters
 ): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
-    await ensureDepositsLockedTable();
-
     const wc = createWhereClause();
 
     addExactFilters(wc, filters, [
@@ -414,24 +421,6 @@ export async function findDepositsLockedByFilters(
 }
 
 export async function markDepositsLockedUsedByRowId(rowId: number): Promise<void> {
-    await ensureDepositsLockedTable();
-
-    // First check if USED and TIMES_USED columns exist, if not add them
-    const alterSql1 = `ALTER TABLE ${DEPOSITS_LOCKED_TABLE} ADD COLUMN USED INTEGER DEFAULT 0;`;
-    const alterSql2 = `ALTER TABLE ${DEPOSITS_LOCKED_TABLE} ADD COLUMN TIMES_USED INTEGER DEFAULT 0;`;
-
-    try {
-        await turso.execute(alterSql1);
-    } catch (error) {
-        // Column might already exist, ignore error
-    }
-
-    try {
-        await turso.execute(alterSql2);
-    } catch (error) {
-        // Column might already exist, ignore error
-    }
-
     await turso.execute({
         sql: `UPDATE ${DEPOSITS_LOCKED_TABLE}
           SET USED = 1,

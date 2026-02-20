@@ -1,5 +1,7 @@
 import prisma from "@/lib/db";
 import { turso } from "@/lib/turso";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 import { DEPOSITS_DP10_TABLE } from "./deposits";
 import { DEPOSITS_LOCKED_TABLE } from "./deposits-locked";
 
@@ -17,7 +19,7 @@ export type DashboardStats = {
     totalLockedCount: number;
 };
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+async function getDashboardStatsRaw(): Promise<DashboardStats> {
     // 1. Active Projects Count
     const activeProjects = await prisma.project.count({
         where: { isActive: true },
@@ -104,4 +106,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         totalDepositsCount,
         totalLockedCount,
     };
+}
+
+const getCachedDashboardStats = unstable_cache(getDashboardStatsRaw, ["dashboard-stats"], {
+    revalidate: 300,
+    tags: [CACHE_TAGS.DASHBOARD],
+});
+
+export async function getDashboardStats(): Promise<DashboardStats> {
+    return getCachedDashboardStats();
 }

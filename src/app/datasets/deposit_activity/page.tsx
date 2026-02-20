@@ -47,7 +47,8 @@ export default function DepositActivityDatasetPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
-    const [form, setForm] = useState<FilterForm>(initialForm);
+    const [draftForm, setDraftForm] = useState<FilterForm>(initialForm);
+    const [appliedForm, setAppliedForm] = useState<FilterForm>(initialForm);
     const [showFilters, setShowFilters] = useState(false);
 
     const [triggering, setTriggering] = useState(false);
@@ -72,15 +73,16 @@ export default function DepositActivityDatasetPage() {
     };
 
     function handleFilterChange(key: keyof FilterForm, value: string) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        setDraftForm((prev) => ({ ...prev, [key]: value }));
     }
 
     function clearFilters() {
-        setForm(initialForm);
+        setDraftForm(initialForm);
+        setAppliedForm(initialForm);
         setPagination((prev) => ({ ...prev, page: 1 }));
     }
 
-    const hasAnyFilter = Object.values(form).some((value) => value.trim() !== "");
+    const hasAnyFilter = Object.values(draftForm).some((value) => value.trim() !== "");
 
     useEffect(() => {
         let isMounted = true;
@@ -94,8 +96,8 @@ export default function DepositActivityDatasetPage() {
                 });
 
                 // Add filter parameters if any are set
-                (Object.keys(form) as (keyof FilterForm)[]).forEach((key) => {
-                    const value = form[key].trim();
+                (Object.keys(appliedForm) as (keyof FilterForm)[]).forEach((key) => {
+                    const value = appliedForm[key].trim();
                     if (value) {
                         // For EXISTS, convert to boolean string
                         if (key === "EXISTS") {
@@ -134,7 +136,7 @@ export default function DepositActivityDatasetPage() {
         return () => {
             isMounted = false;
         };
-    }, [pagination.page, pagination.pageSize, form]);
+    }, [pagination.page, pagination.pageSize, appliedForm]);
 
     const filteredRows = useMemo(() => {
         const normalized = search.trim().toLowerCase();
@@ -241,7 +243,7 @@ export default function DepositActivityDatasetPage() {
                                 <span className="font-semibold text-text-secondary">NUM_CERTIFICADO</span>
                                 <input
                                     type="text"
-                                    value={form.NUM_CERTIFICADO}
+                                    value={draftForm.NUM_CERTIFICADO}
                                     onChange={(event) => handleFilterChange("NUM_CERTIFICADO", event.target.value)}
                                     className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                     placeholder="Ej: AA25280N8YC1"
@@ -251,7 +253,7 @@ export default function DepositActivityDatasetPage() {
                                 <span className="font-semibold text-text-secondary">ESTADO</span>
                                 <input
                                     type="text"
-                                    value={form.ESTADO}
+                                    value={draftForm.ESTADO}
                                     onChange={(event) => handleFilterChange("ESTADO", event.target.value)}
                                     className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                     placeholder="Ej: APROBADO"
@@ -261,7 +263,7 @@ export default function DepositActivityDatasetPage() {
                                 <span className="font-semibold text-text-secondary">ID</span>
                                 <input
                                     type="text"
-                                    value={form.ID}
+                                    value={draftForm.ID}
                                     onChange={(event) => handleFilterChange("ID", event.target.value)}
                                     className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                     placeholder="Ej: 12345"
@@ -270,7 +272,7 @@ export default function DepositActivityDatasetPage() {
                             <label className="flex flex-col gap-2 text-xs">
                                 <span className="font-semibold text-text-secondary">EXISTS</span>
                                 <select
-                                    value={form.EXISTS}
+                                    value={draftForm.EXISTS}
                                     onChange={(event) => handleFilterChange("EXISTS", event.target.value)}
                                     className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                 >
@@ -283,7 +285,10 @@ export default function DepositActivityDatasetPage() {
 
                         <div className="mt-6 flex flex-wrap items-center gap-3">
                             <button
-                                onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))}
+                                onClick={() => {
+                                    setPagination((prev) => ({ ...prev, page: 1 }));
+                                    setAppliedForm(draftForm);
+                                }}
                                 disabled={!hasAnyFilter}
                                 className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
                             >
@@ -298,7 +303,7 @@ export default function DepositActivityDatasetPage() {
                             </button>
                             {hasAnyFilter && (
                                 <span className="text-xs text-text-secondary">
-                                    {Object.values(form).filter(v => v.trim() !== "").length} filtro(s) activo(s)
+                                    {Object.values(appliedForm).filter(v => v.trim() !== "").length} filtro(s) activo(s)
                                 </span>
                             )}
                         </div>

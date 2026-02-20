@@ -9,6 +9,8 @@ import {
 } from "@/lib/services/deposits";
 import { verifyApiAuth } from "@/lib/auth-helper";
 import { handleApiError } from "@/lib/api-error-handler";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/cache-tags";
 
 export async function GET(request: NextRequest) {
     if (!(await verifyApiAuth(request))) {
@@ -142,6 +144,8 @@ export async function POST(request: NextRequest) {
                 ...reductionStats
             };
         }
+
+        revalidateTag(CACHE_TAGS.DASHBOARD, "max");
 
         return NextResponse.json(response, { status: 201 });
     } catch (error) {

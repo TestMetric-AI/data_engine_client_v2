@@ -60,7 +60,8 @@ export default function DepositsLockedDatasetPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
-    const [form, setForm] = useState<QueryForm>(initialForm);
+    const [draftForm, setDraftForm] = useState<QueryForm>(initialForm);
+    const [appliedForm, setAppliedForm] = useState<QueryForm>(initialForm);
     const [showFilters, setShowFilters] = useState(false);
 
     const filterFields: Array<{
@@ -86,21 +87,22 @@ export default function DepositsLockedDatasetPage() {
         ];
 
     function handleFilterChange(key: keyof QueryForm, value: string) {
-        setForm((prev) => ({ ...prev, [key]: value }));
+        setDraftForm((prev) => ({ ...prev, [key]: value }));
     }
 
     function clearFilters() {
-        setForm(initialForm);
+        setDraftForm(initialForm);
+        setAppliedForm(initialForm);
         setPagination((prev) => ({ ...prev, page: 1 }));
     }
 
-    const hasAnyFilter = Object.values(form).some((value) => value.trim() !== "");
+    const hasAnyFilter = Object.values(draftForm).some((value) => value.trim() !== "");
     const hasDateRange =
-        form.FECHA_INICIO_DESDE.trim() !== "" ||
-        form.FECHA_INICIO_HASTA.trim() !== "";
+        draftForm.FECHA_INICIO_DESDE.trim() !== "" ||
+        draftForm.FECHA_INICIO_HASTA.trim() !== "";
     const isDateRangeValid =
-        form.FECHA_INICIO_DESDE.trim() !== "" &&
-        form.FECHA_INICIO_HASTA.trim() !== "";
+        draftForm.FECHA_INICIO_DESDE.trim() !== "" &&
+        draftForm.FECHA_INICIO_HASTA.trim() !== "";
 
     useEffect(() => {
         let isMounted = true;
@@ -114,8 +116,8 @@ export default function DepositsLockedDatasetPage() {
                 });
 
                 // Add filter parameters if any are set
-                (Object.keys(form) as (keyof QueryForm)[]).forEach((key) => {
-                    const value = form[key].trim();
+                (Object.keys(appliedForm) as (keyof QueryForm)[]).forEach((key) => {
+                    const value = appliedForm[key].trim();
                     if (value) {
                         params.set(key, value);
                     }
@@ -149,7 +151,7 @@ export default function DepositsLockedDatasetPage() {
         return () => {
             isMounted = false;
         };
-    }, [pagination.page, pagination.pageSize, form]);
+    }, [pagination.page, pagination.pageSize, appliedForm]);
 
     const filteredRows = useMemo(() => {
         const normalized = search.trim().toLowerCase();
@@ -244,7 +246,7 @@ export default function DepositsLockedDatasetPage() {
                                     <span className="font-semibold text-text-secondary">{label}</span>
                                     <input
                                         type={type ?? "text"}
-                                        value={form[key]}
+                                        value={draftForm[key]}
                                         onChange={(event) => handleFilterChange(key, event.target.value)}
                                         className="rounded-xl border border-border bg-card px-3 py-2 text-sm text-text-primary shadow-sm focus:border-primary focus:outline-none"
                                     />
@@ -260,7 +262,10 @@ export default function DepositsLockedDatasetPage() {
 
                         <div className="mt-6 flex flex-wrap items-center gap-3">
                             <button
-                                onClick={() => setPagination((prev) => ({ ...prev, page: 1 }))}
+                                onClick={() => {
+                                    setPagination((prev) => ({ ...prev, page: 1 }));
+                                    setAppliedForm(draftForm);
+                                }}
                                 disabled={!hasAnyFilter || (hasDateRange && !isDateRangeValid)}
                                 className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-surface disabled:text-text-secondary disabled:shadow-none"
                             >
@@ -275,7 +280,7 @@ export default function DepositsLockedDatasetPage() {
                             </button>
                             {hasAnyFilter && (
                                 <span className="text-xs text-text-secondary">
-                                    {Object.values(form).filter(v => v.trim() !== "").length} filtro(s) activo(s)
+                                    {Object.values(appliedForm).filter(v => v.trim() !== "").length} filtro(s) activo(s)
                                 </span>
                             )}
                         </div>
