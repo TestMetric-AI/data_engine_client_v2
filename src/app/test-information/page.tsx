@@ -3,7 +3,7 @@ import { getTestResults } from "./actions";
 import TestResultsTable from "@/app/test-information/TestResultsTable";
 import { PAGE_SIZE } from "./types";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 interface TestInformationPageProps {
   searchParams: Promise<{

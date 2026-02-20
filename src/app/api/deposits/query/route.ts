@@ -2,8 +2,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findDepositByFilters, markDepositUsedByRowId, DepositsQueryFilters } from "@/lib/services/deposits";
 import { handleApiError } from "@/lib/api-error-handler";
+import { verifyApiAuth } from "@/lib/auth-helper";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { logApiRequestMetrics } from "@/lib/request-metrics";
 
 export async function GET(request: NextRequest) {
+    const startedAt = Date.now();
+    const respond = (body: unknown, status = 200) => {
+        logApiRequestMetrics(request, status, startedAt, body);
+        return NextResponse.json(body, { status });
+    };
+
+    if (!(await verifyApiAuth(request))) {
+        return respond({ message: "Unauthorized" }, 401);
+    }
+
+    const rate = checkRateLimit(request, 60, 60_000);
+    if (!rate.allowed) {
+        return respond(
+            { message: "Too many requests", retryAfterSeconds: rate.retryAfterSeconds },
+            429
+        );
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     const getValue = (key: string): string | undefined => {
@@ -37,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     const hasAnyFilter = Object.values(filters).some((v) => v !== undefined);
     if (!hasAnyFilter) {
-        return NextResponse.json({ message: "Debe enviar al menos un parametro de busqueda." }, { status: 400 });
+        return respond({ message: "Debe enviar al menos un parametro de busqueda." }, 400);
     }
 
     // TODO: Add date validation logic if strict validation is needed
@@ -49,7 +70,7 @@ export async function GET(request: NextRequest) {
     try {
         const result = await findDepositByFilters(filters);
         if (!result) {
-            return NextResponse.json({ message: "No se encontro ningun resultado." }, { status: 404 });
+            return respond({ message: "No se encontro ningun resultado." }, 404);
         }
 
         // Mark record as used only if USED parameter is not explicitly set to false
@@ -64,7 +85,7 @@ export async function GET(request: NextRequest) {
         }
 
         const { __rowid, ...rest } = result;
-        return NextResponse.json({ data: rest });
+        return respond({ data: rest });
 
     } catch (error) {
         return handleApiError(error, "querying deposits");

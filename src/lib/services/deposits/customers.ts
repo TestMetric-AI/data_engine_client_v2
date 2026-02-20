@@ -9,7 +9,6 @@ import type { BulkUpdateResult } from "./types";
 // ── Single customer operations ─────────────────────────────────────
 
 export async function getDistinctCustomers(): Promise<string[]> {
-    await ensureDepositsTable();
     const result = await turso.execute(
         `SELECT DISTINCT ID_CUSTOMER FROM ${DEPOSITS_DP10_TABLE} 
          WHERE ID_CUSTOMER IS NOT NULL AND ID_CUSTOMER != '' 

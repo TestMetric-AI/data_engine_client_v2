@@ -303,6 +303,10 @@ export async function ensureDepositsInterestChangeTable(): Promise<void> {
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_INTEREST_CHANGE_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
     await ensureExtraColumns();
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_INTEREST_CHANGE_TABLE}_certificate ON ${DEPOSITS_INTEREST_CHANGE_TABLE}(NUM_CERTIFICADO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_INTEREST_CHANGE_TABLE}_interest_type ON ${DEPOSITS_INTEREST_CHANGE_TABLE}(INTEREST_TYPE);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_INTEREST_CHANGE_TABLE}_change_date ON ${DEPOSITS_INTEREST_CHANGE_TABLE}(FECHA_CAMBIO_TASA);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_INTEREST_CHANGE_TABLE}_user_change ON ${DEPOSITS_INTEREST_CHANGE_TABLE}(USUARIO_CAMBIO_TASA);`);
 }
 
 export async function insertDepositsInterestChange(rows: DepositsInterestChangeRow[]): Promise<number> {
@@ -391,8 +395,6 @@ export async function listDepositsInterestChange(
     offset: number,
     filters?: DepositsInterestChangePaginationFilters
 ): Promise<DepositsInterestChangePage> {
-    await ensureDepositsInterestChangeTable();
-
     const wc = createWhereClause();
 
     if (filters) {
@@ -456,8 +458,6 @@ function getColumnType(column: string): string {
 }
 
 export async function getAllCertificateNumbers(): Promise<string[]> {
-    await ensureDepositsInterestChangeTable();
-
     const result = await turso.execute({
         sql: `SELECT DISTINCT "NUM_CERTIFICADO" FROM ${DEPOSITS_INTEREST_CHANGE_TABLE} WHERE "NUM_CERTIFICADO" IS NOT NULL ORDER BY "NUM_CERTIFICADO" ASC;`,
         args: [],
@@ -552,8 +552,6 @@ export async function bulkUpdateInterestTypeByCertificate(
 export async function findInterestChangeByFilters(
     filters: DepositsInterestChangeQueryFilters
 ): Promise<Record<string, unknown> | null> {
-    await ensureDepositsInterestChangeTable();
-
     const wc = createWhereClause();
 
     addExactFilters(wc, filters, [

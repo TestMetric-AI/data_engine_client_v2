@@ -14,13 +14,7 @@ const SECRET = process.env.NEXTAUTH_SECRET;
  * Throws error if validation fails in a manageable way, but ideally returns boolean.
  */
 export async function verifyApiAuth(req: NextRequest): Promise<boolean> {
-    // 1. Check for Browser Session
-    const session = await getServerSession(authOptions);
-    if (session?.user) {
-        return true;
-    }
-
-    // 2. Check for Bearer Token
+    // 1. Check for Bearer Token first (cheap path for service-to-service calls)
     const authHeader = req.headers.get("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.split(" ")[1];
@@ -33,6 +27,12 @@ export async function verifyApiAuth(req: NextRequest): Promise<boolean> {
             // Token invalid or expired
             return false;
         }
+    }
+
+    // 2. Check for Browser Session
+    const session = await getServerSession(authOptions);
+    if (session?.user) {
+        return true;
     }
 
     // Not authenticated

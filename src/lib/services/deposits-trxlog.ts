@@ -120,6 +120,10 @@ export async function ensureDepositsTrxLogTable(): Promise<void> {
 
     const createSql = `CREATE TABLE IF NOT EXISTS ${DEPOSITS_TRXLOG_TABLE} (${columnDefs});`;
     await turso.execute(createSql);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_TRXLOG_TABLE}_contract ON ${DEPOSITS_TRXLOG_TABLE}(NUM_CONTRATO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_TRXLOG_TABLE}_stmt ON ${DEPOSITS_TRXLOG_TABLE}(STMT_ENTRY_ID);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_TRXLOG_TABLE}_reg_date ON ${DEPOSITS_TRXLOG_TABLE}(FECHA_REGISTRO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSITS_TRXLOG_TABLE}_used ON ${DEPOSITS_TRXLOG_TABLE}(USED);`);
 }
 
 /**
@@ -169,7 +173,6 @@ export async function insertDepositsTrxLogBatch(
  * Get total count of deposits_trxlog records
  */
 export async function getDepositsTrxLogCount(): Promise<number> {
-    await ensureDepositsTrxLogTable();
     const result = await turso.execute(
         `SELECT COUNT(*) as count FROM ${DEPOSITS_TRXLOG_TABLE};`
     );
@@ -189,8 +192,6 @@ export async function listDepositsTrxLog(
     offset: number,
     search?: string
 ): Promise<DepositsTrxLogPage> {
-    await ensureDepositsTrxLogTable();
-
     let whereClause = "";
     const args: InValue[] = [];
 
@@ -263,10 +264,6 @@ export async function migrateDepositsTrxLogUsedColumns(): Promise<void> {
  * Mark a deposits_trxlog record as used by rowid
  */
 export async function markDepositsTrxLogUsedByRowId(rowId: number): Promise<void> {
-    await ensureDepositsTrxLogTable();
-
-
-
     const sql = `
         UPDATE ${DEPOSITS_TRXLOG_TABLE}
         SET "USED" = 1,
@@ -309,9 +306,6 @@ export type DepositsTrxLogQueryFilters = {
 export async function findDepositsTrxLogByFilters(
     filters: DepositsTrxLogQueryFilters
 ): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
-    await ensureDepositsTrxLogTable();
-    await migrateDepositsTrxLogUsedColumns();
-
     const wc = createWhereClause(/* unusedOnly */ true);
 
     const filterKeys = Object.keys(filters) as Array<keyof DepositsTrxLogQueryFilters>;

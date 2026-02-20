@@ -287,6 +287,13 @@ export async function ensureDepositActivityTable(): Promise<void> {
     } catch (error) {
         // Column already exists, ignore error
     }
+
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_certificate ON ${DEPOSIT_ACTIVITY_TABLE}(NUM_CERTIFICADO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_estado ON ${DEPOSIT_ACTIVITY_TABLE}(ESTADO);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_id ON ${DEPOSIT_ACTIVITY_TABLE}(ID);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_exists ON ${DEPOSIT_ACTIVITY_TABLE}(EXISTS);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_used ON ${DEPOSIT_ACTIVITY_TABLE}(USED);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_${DEPOSIT_ACTIVITY_TABLE}_fecha_registro ON ${DEPOSIT_ACTIVITY_TABLE}(FECHA_REGISTRO);`);
 }
 
 export async function insertDepositActivity(rows: DepositActivityRow[]): Promise<number> {
@@ -354,8 +361,6 @@ export async function clearDepositActivity(): Promise<void> {
  * Mark a deposit activity record as used by its rowid
  */
 export async function markDepositActivityUsedByRowId(rowId: number): Promise<void> {
-    await ensureDepositActivityTable();
-
     const sql = `
         UPDATE ${DEPOSIT_ACTIVITY_TABLE}
         SET "USED" = 1,
@@ -467,8 +472,6 @@ export async function bulkUpdateDepositActivityExists(
  * Get all NUM_CERTIFICADO values from deposit_activity
  */
 export async function getAllCertificateNumbers(): Promise<string[]> {
-    await ensureDepositActivityTable();
-
     const sql = `
         SELECT DISTINCT "NUM_CERTIFICADO"
         FROM ${DEPOSIT_ACTIVITY_TABLE}
@@ -493,8 +496,6 @@ export async function listDepositActivity(
     offset: number,
     filters?: DepositActivityListFilters
 ): Promise<DepositActivityPage> {
-    await ensureDepositActivityTable();
-
     const wc = createWhereClause();
 
     if (filters) {
@@ -538,8 +539,6 @@ export type DepositActivityQueryFilters = {
 export async function findDepositActivityByFilters(
     filters: DepositActivityQueryFilters
 ): Promise<(Record<string, unknown> & { __rowid?: number | null }) | null> {
-    await ensureDepositActivityTable();
-
     const wc = createWhereClause(/* unusedOnly */ true);
 
     addExactFilters(wc, filters, [

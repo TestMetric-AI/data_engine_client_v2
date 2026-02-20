@@ -36,11 +36,6 @@ export function useSessionMonitor() {
             // Trigger session update in NextAuth
             await update();
             updateActivity();
-
-            // Call API to log session extension
-            await fetch("/api/auth/extend-session", {
-                method: "POST",
-            });
         } catch (error) {
             console.error("Failed to extend session:", error);
         }
