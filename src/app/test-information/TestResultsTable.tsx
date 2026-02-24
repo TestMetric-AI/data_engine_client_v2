@@ -347,9 +347,9 @@ export default function TestResultsTable({
         </div>
 
         {/* Table */}
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
           <table className="min-w-full border-collapse text-left text-sm">
-            <thead className="border-b border-border text-xs uppercase text-text-secondary">
+            <thead className="sticky top-0 z-10 border-b border-border bg-card text-xs uppercase text-text-secondary">
               <tr>
                 <th className="whitespace-nowrap px-3 py-3">Test Title</th>
                 <th className="whitespace-nowrap px-3 py-3">Status</th>
@@ -482,3 +482,4 @@ export default function TestResultsTable({
     </div>
   );
 }
+
