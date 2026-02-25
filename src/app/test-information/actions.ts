@@ -6,8 +6,11 @@ import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { TestResultsFilter, TestResultsResult, TestResultRow } from "./types";
 import { PAGE_SIZE } from "./types";
+import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
 
 async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResultsResult> {
+  await cleanupExpiredTestResults();
+
   const page = filter.page ?? 1;
   const pageSize = filter.pageSize ?? PAGE_SIZE;
   const skip = (page - 1) * pageSize;

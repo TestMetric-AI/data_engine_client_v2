@@ -6,6 +6,7 @@ import { z } from "zod";
 import { handleApiError } from "@/lib/api-error-handler";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
 
 const testResultSchema = z.object({
     testTitle: z.string().min(1),
@@ -47,6 +48,8 @@ export async function POST(request: NextRequest) {
         }
 
         const parsed = Array.isArray(result.data) ? result.data : [result.data];
+
+        await cleanupExpiredTestResults();
 
         const items: Prisma.TestResultCreateManyInput[] = parsed.map((r) => ({
             ...r,
