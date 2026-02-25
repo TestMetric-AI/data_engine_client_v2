@@ -63,7 +63,7 @@ describe("TestResultsTable", () => {
         render(<TestResultsTable {...defaultProps} rows={[sampleRow]} total={1} totalPages={1} />);
 
         expect(screen.getByText("Sample Test")).toBeInTheDocument();
-        expect(screen.getByText("passed")).toBeInTheDocument();
+        expect(screen.getByText("Passed")).toBeInTheDocument();
         expect(screen.getByText("1.2s")).toBeInTheDocument(); // 1234ms -> 1.2s
         expect(screen.getByText("Project A")).toBeInTheDocument();
     });
@@ -139,8 +139,8 @@ describe("TestResultsTable", () => {
         const showFiltersButton = screen.getByText("Show filters");
         fireEvent.click(showFiltersButton);
 
-        // Click clear filters
-        const clearButton = screen.getByText("Clear filters");
+        // Click reset filters
+        const clearButton = screen.getByText("Reset all");
         fireEvent.click(clearButton);
 
         expect(mockPush).toHaveBeenCalledWith("/test-information");
