@@ -37,7 +37,15 @@ export default async function TestInformationPage({ searchParams }: TestInformat
   });
 
   return (
-    <Suspense fallback={<div className="text-text-secondary">Loading test results...</div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-7xl space-y-6">
+          <div className="h-40 animate-pulse rounded-2xl border border-border bg-card" />
+          <div className="h-36 animate-pulse rounded-2xl border border-border bg-card" />
+          <div className="h-80 animate-pulse rounded-2xl border border-border bg-card" />
+        </div>
+      }
+    >
       <TestResultsTable
         rows={data.rows}
         total={data.total}
