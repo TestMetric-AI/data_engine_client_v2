@@ -1,5 +1,7 @@
 import { turso } from "@/lib/turso";
 import type { InValue } from "@libsql/client";
+import { parse } from "csv-parse/sync";
+import { z } from "zod";
 import {
     createWhereClause,
     addExactFilters,
@@ -115,6 +117,134 @@ export async function clearAccountC10Table(): Promise<void> {
 }
 
 export type AccountC10Row = Record<string, string | number | null>;
+
+export type AccountC10ValidationError = {
+    row: number;
+    column: string;
+    value: string;
+    message: string;
+};
+
+export type AccountC10ParseResult = {
+    rows: AccountC10Row[];
+    errors: AccountC10ValidationError[];
+};
+
+const CsvNumberSchema = z.string().nullable().optional().transform((val, ctx) => {
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (trimmed.length === 0) return null;
+    const num = Number(trimmed);
+    if (isNaN(num)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Debe ser un número válido",
+        });
+        return z.NEVER;
+    }
+    return num;
+});
+
+const EMPTY_TO_NULL = (val: string | null | undefined) => {
+    if (!val) return null;
+    const trimmed = val.trim();
+    return trimmed.length === 0 ? null : trimmed;
+};
+
+const AccountC10RowSchema = z.object({
+    arrangement_id: z.string().trim().min(1, "arrangement_id es requerido"),
+    company_code: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    arrangement_status: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    product_id: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    cleared_balance: CsvNumberSchema,
+    ledger_balance: CsvNumberSchema,
+    locked_balance: CsvNumberSchema,
+    working_balance: CsvNumberSchema,
+    product_group_id: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    available_balance: CsvNumberSchema,
+    account_id: z.string().trim().min(1, "account_id es requerido").transform((val, ctx) => {
+        const num = Number(val);
+        if (isNaN(num)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "account_id debe ser numérico" });
+            return z.NEVER;
+        }
+        return num;
+    }),
+    officer_name: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    currency: z.string().trim().min(1, "currency es requerido"),
+    legal_doc_name: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    legal_id: z.string().nullable().optional().transform(EMPTY_TO_NULL),
+    officer_id: CsvNumberSchema,
+});
+
+export function parseAccountC10Csv(buffer: Buffer): AccountC10ParseResult {
+    let headers: string[] = [];
+
+    let records: Record<string, string>[];
+    try {
+        records = parse(buffer, {
+            columns: (header: string[]) => {
+                headers = header;
+                return header;
+            },
+            delimiter: [",", "|", ";"], // Supports multiple common delimiters
+            skip_empty_lines: true,
+            bom: true,
+            trim: true,
+            relax_column_count: true,
+            quote: '"',
+        }) as Record<string, string>[];
+    } catch (error) {
+        return {
+            rows: [],
+            errors: [{
+                row: 0,
+                column: "FILE",
+                value: "",
+                message: "Archivo CSV mal formado o delimitador no soportado."
+            }]
+        };
+    }
+
+    const errors: AccountC10ValidationError[] = [];
+
+    // Check required headers
+    const missingRequired = ["arrangement_id", "account_id", "currency"].filter(
+        (col) => !headers.includes(col)
+    );
+
+    if (missingRequired.length > 0) {
+        errors.push({
+            row: 1,
+            column: "HEADER",
+            value: headers.join(" | "),
+            message: `Faltan columnas requeridas en el encabezado: ${missingRequired.join(", ")}`,
+        });
+        return { rows: [], errors };
+    }
+
+    const normalizedRows: AccountC10Row[] = [];
+
+    records.forEach((row, index) => {
+        const rowNumber = index + 2; // +1 for 1-based index, +1 for header
+
+        const normalized = AccountC10RowSchema.safeParse(row);
+        if (!normalized.success) {
+            normalized.error.issues.forEach((issue) => {
+                errors.push({
+                    row: rowNumber,
+                    column: issue.path[0]?.toString() ?? "UNKNOWN",
+                    value: String(row[issue.path[0]?.toString() ?? ""] ?? ""),
+                    message: issue.message,
+                });
+            });
+            return;
+        }
+        normalizedRows.push(normalized.data);
+    });
+
+    return { rows: normalizedRows, errors };
+}
 
 /**
  * Insert account_c10 records in batches.
