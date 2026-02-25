@@ -2,6 +2,7 @@ import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
+import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
 
 export type DashboardFilters = {
     testProject?: string;
@@ -61,6 +62,8 @@ export type TestResultsDashboardData = {
 };
 
 async function getDashboardFilterOptionsRaw() {
+    await cleanupExpiredTestResults();
+
     const [projects, pipelines, environments] = await Promise.all([
         prisma.testResult.findMany({ select: { testProject: true }, distinct: ["testProject"], where: { testProject: { not: null } } }),
         prisma.testResult.findMany({ select: { pipelineId: true }, distinct: ["pipelineId"], where: { pipelineId: { not: null } } }),
@@ -74,6 +77,8 @@ async function getDashboardFilterOptionsRaw() {
 }
 
 async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promise<TestResultsDashboardData> {
+    await cleanupExpiredTestResults();
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 

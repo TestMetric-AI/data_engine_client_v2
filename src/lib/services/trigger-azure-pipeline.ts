@@ -66,3 +66,6 @@ export const triggerAzurePipelineForInterestTypeEnrichmentDP10 = () =>
 
 export const triggerAzurePipelineForExistsDepositActivityEnrichmentDP10 = () =>
     triggerAzurePipeline("@exists-deposit-activity-enrichment");
+
+export const triggerAzurePipelineForAccountCreationEnrichment = () =>
+    triggerAzurePipeline("@account-creation-enrichment");

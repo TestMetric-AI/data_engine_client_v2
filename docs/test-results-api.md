@@ -134,6 +134,17 @@ curl -X POST "https://your-domain.com/api/test-results" \
 
 ---
 
+## Data Retention
+
+`TestResult` records are retained for **15 days** and then automatically deleted by backend cleanup jobs that run during test-results write/read flows.
+
+Optional environment variables:
+
+- `TEST_RESULTS_RETENTION_DAYS` (default: `15`)
+- `TEST_RESULTS_CLEANUP_COOLDOWN_MINUTES` (default: `60`)
+
+---
+
 ## CI/CD Integration
 
 ### GitHub Actions
