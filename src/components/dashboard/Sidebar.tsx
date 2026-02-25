@@ -68,6 +68,7 @@ const navSections: NavSection[] = [
         icon: FolderIcon,
         subItems: [
           { label: "Deposits DP10", href: "/datasets/deposits_dp_10" },
+          { label: "Account C10", href: "/datasets/account_c10" },
           { label: "Deposits Locked", href: "/datasets/deposits_locked" },
           { label: "Deposits TrxLog", href: "/datasets/deposits_trxlog" },
           { label: "Interest Change", href: "/datasets/deposits_interest_change" },

@@ -1,5 +1,11 @@
 import { turso } from "@/lib/turso";
 import type { InValue } from "@libsql/client";
+import {
+    createWhereClause,
+    addExactFilters,
+    toWhereSQL,
+    rowsToRecords,
+} from "./query-builder";
 
 export const ACCOUNT_C10_TABLE = "account_c10";
 
@@ -186,4 +192,50 @@ export async function getAccountC10Count(): Promise<number> {
         `SELECT COUNT(*) as count FROM ${ACCOUNT_C10_TABLE};`
     );
     return Number(result.rows[0].count);
+}
+
+export type AccountC10Page = {
+    rows: Record<string, unknown>[];
+    total: number;
+};
+
+export async function listAccountC10(
+    limit: number,
+    offset: number,
+    filters?: Record<string, string>
+): Promise<AccountC10Page> {
+    const wc = createWhereClause();
+
+    if (filters) {
+        addExactFilters(wc, filters, [
+            "arrangement_id",
+            "company_code",
+            "arrangement_status",
+            "product_id",
+            "product_group_id",
+            "account_id",
+            "officer_name",
+            "currency",
+            "legal_doc_name",
+            "legal_id",
+            "officer_id",
+        ]);
+    }
+
+    const whereSQL = toWhereSQL(wc);
+
+    const countResult = await turso.execute({
+        sql: `SELECT COUNT(*) as total FROM ${ACCOUNT_C10_TABLE}${whereSQL};`,
+        args: wc.args,
+    });
+    const total = Number(countResult.rows[0][0] ?? 0);
+
+    const dataResult = await turso.execute({
+        sql: `SELECT * FROM ${ACCOUNT_C10_TABLE}${whereSQL}
+          ORDER BY updated_at DESC, account_id ASC
+          LIMIT ? OFFSET ?;`,
+        args: [...wc.args, limit, offset],
+    });
+
+    return { rows: rowsToRecords(dataResult), total };
 }
