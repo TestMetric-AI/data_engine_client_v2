@@ -39,7 +39,7 @@ export default function RolesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_var(--color-background)_0%,_var(--color-surface)_45%,_#eef2ff_100%)]">
+        <div className="min-h-screen bg-background">
             <div className="flex min-h-screen flex-col lg:flex-row">
                 <Sidebar />
                 <div className="flex flex-1 flex-col">
