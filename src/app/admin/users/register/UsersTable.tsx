@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type User = {
     id: string;
@@ -11,9 +11,11 @@ type User = {
     createdAt: string;
 };
 
-import { MagnifyingGlassIcon, PowerIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, PowerIcon } from "@heroicons/react/24/outline";
 import { useSession } from "next-auth/react";
 import Modal from "@/components/ui/Modal";
+
+const pageSizes = [10, 25, 50, 100];
 
 export default function UsersTable({ refreshTrigger }: { refreshTrigger: number }) {
     const { data: session } = useSession();
@@ -21,6 +23,11 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    const getErrorMessage = (error: unknown) =>
+        error instanceof Error ? error.message : "Unexpected error";
 
     useEffect(() => {
         async function fetchUsers() {
@@ -30,8 +37,8 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
                 if (!res.ok) throw new Error("Failed to fetch users");
                 const data = await res.json();
                 setUsers(data);
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                setError(getErrorMessage(err));
             } finally {
                 setLoading(false);
             }
@@ -84,8 +91,8 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
             // Optimistic update
             setUsers(prev => prev.map(u => u.id === pendingToggle.id ? { ...u, isActive: !pendingToggle.currentStatus } : u));
             setPendingToggle(null);
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(getErrorMessage(err));
         }
     }
 
@@ -107,22 +114,39 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
                 u.id === editingUser.id ? { ...u, roles: updatedUser.roles } : u
             ));
             setEditingUser(null);
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(getErrorMessage(err));
         }
     }
 
-    const filteredUsers = users.filter(user =>
-        (user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredUsers = useMemo(
+        () =>
+            users.filter(
+                (user) =>
+                    (user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
+                    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+            ),
+        [users, searchQuery]
     );
-
-    if (loading) return <div className="text-sm text-text-secondary p-4">Loading users...</div>;
-    if (error) return <div className="text-sm text-rose-500 p-4">Error: {error}</div>;
+    const totalFiltered = filteredUsers.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const canPrev = currentPage > 1;
+    const canNext = currentPage < totalPages;
+    const startIndex = (currentPage - 1) * pageSize;
+    const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize);
+    const visiblePages = useMemo(() => {
+        const pages: number[] = [];
+        const start = Math.max(1, currentPage - 2);
+        const end = Math.min(totalPages, currentPage + 2);
+        for (let i = start; i <= end; i += 1) {
+            pages.push(i);
+        }
+        return pages;
+    }, [currentPage, totalPages]);
 
     return (
         <section className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm">
-            {/* Same header... */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
                     <h2 className="font-display text-lg font-semibold text-text-primary">
@@ -137,7 +161,10 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
                         type="text"
                         placeholder="Search users..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPage(1);
+                        }}
                         className="rounded-xl border border-border bg-surface px-4 py-2 pl-10 text-sm text-text-primary placeholder-text-secondary focus:border-primary focus:outline-none focus:ring-0 w-full sm:w-64"
                     />
                     <div className="pointer-events-none absolute left-3 top-2.5 text-text-secondary">
@@ -146,9 +173,70 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
                 </div>
             </div>
 
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-text-secondary">
+                    Mostrando {loading || error ? 0 : paginatedUsers.length} de {totalFiltered} usuarios.
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>Page size</span>
+                        <select
+                            value={pageSize}
+                            onChange={(event) => {
+                                setPageSize(Number(event.target.value));
+                                setPage(1);
+                            }}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+                        >
+                            {pageSizes.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            disabled={!canPrev}
+                            onClick={() => setPage((prev) => prev - 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Prev
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {visiblePages.map((visiblePage) => (
+                                <button
+                                    key={visiblePage}
+                                    type="button"
+                                    onClick={() => setPage(visiblePage)}
+                                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
+                                        ? "bg-primary text-white"
+                                        : "border border-border bg-card text-text-secondary"
+                                        }`}
+                                >
+                                    {visiblePage}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            disabled={!canNext}
+                            onClick={() => setPage((prev) => prev + 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
                 <table className="min-w-full border-collapse text-left text-sm">
-                    <thead className="border-b border-border text-xs uppercase text-text-secondary">
+                    <thead className="sticky top-0 z-10 border-b border-border bg-card text-xs uppercase text-text-secondary">
                         <tr>
                             <th className="whitespace-nowrap px-3 py-3">User</th>
                             <th className="whitespace-nowrap px-3 py-3">Role</th>
@@ -158,64 +246,114 @@ export default function UsersTable({ refreshTrigger }: { refreshTrigger: number 
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredUsers.map((user) => (
-                            <tr key={user.id} className="border-b border-border text-text-secondary hover:bg-surface/50">
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <div className="font-medium text-text-primary">{user.name || "Unnamed"}</div>
-                                    <div className="text-text-secondary text-xs">{user.email}</div>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <div className="flex flex-wrap gap-1 items-center">
-                                        {user.roles.map((r) => (
-                                            <span key={r.name} className="inline-flex items-center rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-text-primary">
-                                                {r.name}
-                                            </span>
-                                        ))}
-                                        <button
-                                            onClick={() => setEditingUser({ id: user.id, name: user.name || "", roles: user.roles.map(r => r.name) })}
-                                            className="ml-2 text-primary hover:text-primary/80 text-xs font-semibold underline"
-                                        >
-                                            Edit
-                                        </button>
-                                    </div>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.isActive
-                                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                                        : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
-                                        }`}>
-                                        {user.isActive ? "Active" : "Inactive"}
-                                    </span>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 text-text-secondary">
-                                    {new Date(user.createdAt).toLocaleDateString()}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 text-right">
-                                    <button
-                                        onClick={() => initiateToggle(user)}
-                                        disabled={session?.user?.email === user.email}
-                                        title={session?.user?.email === user.email ? "You cannot change your own status" : (user.isActive ? "Deactivate User" : "Activate User")}
-                                        className={`rounded-lg p-2 transition-colors ${session?.user?.email === user.email
-                                            ? "cursor-not-allowed opacity-30 text-text-secondary"
-                                            : user.isActive
-                                                ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-                                                : "text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
-                                            }`}
-                                    >
-                                        <PowerIcon className="h-5 w-5" />
-                                    </button>
+                        {loading ? (
+                            <tr>
+                                <td colSpan={5} className="px-3 py-10 text-center text-sm text-text-secondary">
+                                    Cargando usuarios...
                                 </td>
                             </tr>
-                        ))}
-                        {filteredUsers.length === 0 && (
+                        ) : error ? (
+                            <tr>
+                                <td colSpan={5} className="px-3 py-10 text-center text-sm text-rose-600">
+                                    {error}
+                                </td>
+                            </tr>
+                        ) : paginatedUsers.length === 0 ? (
                             <tr>
                                 <td colSpan={5} className="px-3 py-10 text-center text-sm text-text-secondary">
                                     {searchQuery ? "No users match your search." : "No users found."}
                                 </td>
                             </tr>
+                        ) : (
+                            paginatedUsers.map((user) => (
+                                <tr key={user.id} className="border-b border-border text-text-secondary hover:bg-surface/50">
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <div className="font-medium text-text-primary">{user.name || "Unnamed"}</div>
+                                        <div className="text-text-secondary text-xs">{user.email}</div>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            {user.roles.map((r) => (
+                                                <span key={r.name} className="inline-flex items-center rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-text-primary">
+                                                    {r.name}
+                                                </span>
+                                            ))}
+                                            <button
+                                                onClick={() => setEditingUser({ id: user.id, name: user.name || "", roles: user.roles.map((r) => r.name) })}
+                                                className="ml-2 text-xs font-semibold text-primary underline hover:text-primary/80"
+                                            >
+                                                Edit
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${user.isActive
+                                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                                            : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                            }`}>
+                                            {user.isActive ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-text-secondary">
+                                        {new Date(user.createdAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                                        <button
+                                            onClick={() => initiateToggle(user)}
+                                            disabled={session?.user?.email === user.email}
+                                            title={session?.user?.email === user.email ? "You cannot change your own status" : (user.isActive ? "Deactivate User" : "Activate User")}
+                                            className={`rounded-lg p-2 transition-colors ${session?.user?.email === user.email
+                                                ? "cursor-not-allowed text-text-secondary opacity-30"
+                                                : user.isActive
+                                                    ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                                                    : "text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
+                                                }`}
+                                        >
+                                            <PowerIcon className="h-5 w-5" />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
+                <span>
+                    Page {currentPage} of {totalPages} (total {totalFiltered})
+                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        disabled={!canPrev}
+                        onClick={() => setPage((prev) => prev - 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Prev
+                    </button>
+                    {visiblePages.map((visiblePage) => (
+                        <button
+                            key={`bottom-${visiblePage}`}
+                            type="button"
+                            onClick={() => setPage(visiblePage)}
+                            className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
+                                ? "bg-primary text-white"
+                                : "border border-border bg-card text-text-secondary"
+                                }`}
+                        >
+                            {visiblePage}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        disabled={!canNext}
+                        onClick={() => setPage((prev) => prev + 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
 
             {/* Toggle Status Modal */}

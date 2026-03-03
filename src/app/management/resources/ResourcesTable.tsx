@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MagnifyingGlassIcon, PencilSquareIcon, PowerIcon } from "@heroicons/react/24/outline";
 import { getResourcesAction, toggleResourceStatusAction } from "./actions";
 import Modal from "@/components/ui/Modal";
@@ -27,40 +27,47 @@ interface ResourcesTableProps {
     onEdit: (resource: Resource) => void;
 }
 
+const pageSizes = [10, 25, 50, 100];
+
 export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTableProps) {
     const [resources, setResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
     // Status Confirmation Modal State
     const [confirmModalOpen, setConfirmModalOpen] = useState(false);
     const [resourceToToggle, setResourceToToggle] = useState<Resource | null>(null);
 
-    const pageSize = 10;
+    const getErrorMessage = (error: unknown) =>
+        error instanceof Error ? error.message : "Unexpected error";
 
-    useEffect(() => {
-        fetchResources();
-    }, [refreshTrigger, page, searchQuery]);
-
-    async function fetchResources() {
+    const fetchResources = useCallback(async () => {
         try {
             setLoading(true);
+            setError("");
             const res = await getResourcesAction({ page, pageSize, search: searchQuery });
             if (res.success && res.data) {
                 setResources(res.data.resources);
-                setTotalPages(res.data.totalPages);
+                setTotal(res.data.total ?? 0);
+                setTotalPages(Math.max(1, res.data.totalPages ?? 1));
             } else {
                 setError(res.message || "Failed to fetch resources");
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }
-    }
+    }, [page, pageSize, searchQuery]);
+
+    useEffect(() => {
+        fetchResources();
+    }, [fetchResources, refreshTrigger]);
 
     function initiateToggleStatus(resource: Resource) {
         setResourceToToggle(resource);
@@ -80,8 +87,8 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
             } else {
                 alert(res.message);
             }
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(getErrorMessage(err));
         }
     }
 
@@ -90,8 +97,17 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
         setPage(1);
     };
 
-    if (loading && resources.length === 0) return <div className="text-sm text-text-secondary p-4">Loading resources...</div>;
-    if (error) return <div className="text-sm text-rose-500 p-4">Error: {error}</div>;
+    const canPrev = page > 1;
+    const canNext = page < totalPages;
+    const visiblePages = useMemo(() => {
+        const pages: number[] = [];
+        const start = Math.max(1, page - 2);
+        const end = Math.min(totalPages, page + 2);
+        for (let i = start; i <= end; i += 1) {
+            pages.push(i);
+        }
+        return pages;
+    }, [page, totalPages]);
 
     return (
         <section className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -101,7 +117,7 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
                         Resources List
                     </h2>
                     <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-text-secondary">
-                        Total Pages: {totalPages}
+                        {total} resources
                     </span>
                 </div>
                 <div className="relative">
@@ -117,9 +133,71 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
                     </div>
                 </div>
             </div>
-            <div className="mt-4 overflow-x-auto">
+
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-text-secondary">
+                    Mostrando {loading || error ? 0 : resources.length} de {total} recursos.
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>Page size</span>
+                        <select
+                            value={pageSize}
+                            onChange={(event) => {
+                                setPageSize(Number(event.target.value));
+                                setPage(1);
+                            }}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+                        >
+                            {pageSizes.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>
+                            Page {page} of {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            disabled={!canPrev}
+                            onClick={() => setPage((prev) => prev - 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Prev
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {visiblePages.map((visiblePage) => (
+                                <button
+                                    key={visiblePage}
+                                    type="button"
+                                    onClick={() => setPage(visiblePage)}
+                                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === page
+                                        ? "bg-primary text-white"
+                                        : "border border-border bg-card text-text-secondary"
+                                        }`}
+                                >
+                                    {visiblePage}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            disabled={!canNext}
+                            onClick={() => setPage((prev) => prev + 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
                 <table className="min-w-full border-collapse text-left text-sm">
-                    <thead className="border-b border-border text-xs uppercase text-text-secondary">
+                    <thead className="sticky top-0 z-10 border-b border-border bg-card text-xs uppercase text-text-secondary">
                         <tr>
                             <th className="whitespace-nowrap px-3 py-3">Full Name</th>
                             <th className="whitespace-nowrap px-3 py-3">Email</th>
@@ -129,78 +207,111 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
                             <th className="whitespace-nowrap px-3 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
-                        {resources.map((resource) => (
-                            <tr key={resource.id} className="text-text-secondary hover:bg-surface/50">
-                                <td className="whitespace-nowrap px-3 py-3 font-medium text-text-primary">
-                                    {resource.fullName}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    {resource.user.email}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    {resource.role?.name || "-"}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    {resource.allocationPercentage}%
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${resource.active
-                                            ? "bg-green-50 text-green-700"
-                                            : "bg-red-50 text-red-700"
-                                        }`}>
-                                        {resource.active ? "Active" : "Inactive"}
-                                    </span>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            onClick={() => onEdit(resource)}
-                                            title="Edit Resource"
-                                            className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface hover:text-primary"
-                                        >
-                                            <PencilSquareIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => initiateToggleStatus(resource)}
-                                            title={resource.active ? "Deactivate Resource" : "Activate Resource"}
-                                            className={`rounded-lg p-2 transition-colors ${resource.active
-                                                    ? "text-text-secondary hover:bg-rose-50 hover:text-rose-600"
-                                                    : "text-text-secondary hover:bg-green-50 hover:text-green-600"
-                                                }`}
-                                        >
-                                            <PowerIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
+                    <tbody>
+                        {loading ? (
+                            <tr>
+                                <td colSpan={6} className="px-3 py-10 text-center text-sm text-text-secondary">
+                                    Cargando recursos...
                                 </td>
                             </tr>
-                        ))}
-                        {resources.length === 0 && (
+                        ) : error ? (
+                            <tr>
+                                <td colSpan={6} className="px-3 py-10 text-center text-sm text-rose-600">
+                                    {error}
+                                </td>
+                            </tr>
+                        ) : resources.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="px-3 py-10 text-center text-sm text-text-secondary">
                                     {searchQuery ? "No resources match your search." : "No resources found."}
                                 </td>
                             </tr>
+                        ) : (
+                            resources.map((resource) => (
+                                <tr key={resource.id} className="border-b border-border text-text-secondary hover:bg-surface/50">
+                                    <td className="whitespace-nowrap px-3 py-3 font-medium text-text-primary">
+                                        {resource.fullName}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        {resource.user.email}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        {resource.role?.name || "-"}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        {resource.allocationPercentage}%
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${resource.active
+                                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                                            : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                            }`}>
+                                            {resource.active ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => onEdit(resource)}
+                                                title="Edit Resource"
+                                                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface hover:text-primary"
+                                            >
+                                                <PencilSquareIcon className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => initiateToggleStatus(resource)}
+                                                title={resource.active ? "Deactivate Resource" : "Activate Resource"}
+                                                className={`rounded-lg p-2 transition-colors ${resource.active
+                                                    ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                                                    : "text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
+                                                    }`}
+                                            >
+                                                <PowerIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>
             </div>
-            <div className="mt-4 flex justify-between items-center text-sm text-text-secondary">
-                <button
-                    disabled={page === 1}
-                    onClick={() => setPage(p => p - 1)}
-                    className="disabled:opacity-50 hover:text-text-primary"
-                >
-                    Previous
-                </button>
-                <span>Page {page} of {totalPages}</span>
-                <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage(p => p + 1)}
-                    className="disabled:opacity-50 hover:text-text-primary"
-                >
-                    Next
-                </button>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
+                <span>
+                    Page {page} of {totalPages} (total {total})
+                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        disabled={!canPrev}
+                        onClick={() => setPage((prev) => prev - 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Prev
+                    </button>
+                    {visiblePages.map((visiblePage) => (
+                        <button
+                            key={`bottom-${visiblePage}`}
+                            type="button"
+                            onClick={() => setPage(visiblePage)}
+                            className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === page
+                                ? "bg-primary text-white"
+                                : "border border-border bg-card text-text-secondary"
+                                }`}
+                        >
+                            {visiblePage}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        disabled={!canNext}
+                        onClick={() => setPage((prev) => prev + 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
 
             {/* Confirmation Modal */}
@@ -212,7 +323,7 @@ export default function ResourcesTable({ refreshTrigger, onEdit }: ResourcesTabl
                 <div className="flex flex-col gap-4">
                     <p className="text-text-secondary">
                         Are you sure you want to {resourceToToggle?.active ? "deactivate" : "activate"} the resource
-                        <span className="font-semibold text-text-primary"> "{resourceToToggle?.fullName}"</span>?
+                        <span className="font-semibold text-text-primary"> &quot;{resourceToToggle?.fullName}&quot;</span>?
                     </p>
                     <div className="flex justify-end gap-3 mt-4">
                         <button
