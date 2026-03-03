@@ -23,7 +23,7 @@ export default function RegisterUserForm({ onSuccess }: RegisterUserFormProps) {
     useEffect(() => {
         async function fetchRoles() {
             try {
-                const res = await fetch("/api/admin/roles");
+                const res = await fetch("/api/admin/roles?active=true");
                 if (!res.ok) throw new Error("Failed to fetch roles");
                 const data = await res.json();
                 setRoles(data);

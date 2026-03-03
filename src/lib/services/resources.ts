@@ -121,6 +121,7 @@ export async function getEligibleUsers() {
 
 export async function getResourceRoles() {
     return prisma.resourceRole.findMany({
+        where: { isActive: true },
         orderBy: { name: 'asc' }
     });
 }

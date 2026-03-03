@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
+    "seed:test-results:cleanup": "node --env-file=.env --import tsx prisma/seed-clean-test-results.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MagnifyingGlassIcon, PowerIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 
 type Role = {
@@ -19,11 +19,18 @@ interface RolesTableProps {
     onEdit: (role: Role) => void;
 }
 
+const pageSizes = [10, 25, 50, 100];
+
 export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) {
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    const getErrorMessage = (error: unknown) =>
+        error instanceof Error ? error.message : "Unexpected error";
 
     useEffect(() => {
         async function fetchRoles() {
@@ -33,8 +40,8 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
                 if (!res.ok) throw new Error("Failed to fetch roles");
                 const data = await res.json();
                 setRoles(data);
-            } catch (err: any) {
-                setError(err.message);
+            } catch (err: unknown) {
+                setError(getErrorMessage(err));
             } finally {
                 setLoading(false);
             }
@@ -55,18 +62,36 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
             if (!res.ok) throw new Error("Failed to update status");
 
             setRoles(prev => prev.map(r => r.id === roleId ? { ...r, isActive: !currentStatus } : r));
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(getErrorMessage(err));
         }
     }
 
-    const filteredRoles = roles.filter(role =>
-        role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (role.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+    const filteredRoles = useMemo(
+        () =>
+            roles.filter(
+                (role) =>
+                    role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (role.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+            ),
+        [roles, searchQuery]
     );
-
-    if (loading) return <div className="text-sm text-text-secondary p-4">Loading roles...</div>;
-    if (error) return <div className="text-sm text-rose-500 p-4">Error: {error}</div>;
+    const totalFiltered = filteredRoles.length;
+    const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const canPrev = currentPage > 1;
+    const canNext = currentPage < totalPages;
+    const startIndex = (currentPage - 1) * pageSize;
+    const paginatedRoles = filteredRoles.slice(startIndex, startIndex + pageSize);
+    const visiblePages = useMemo(() => {
+        const pages: number[] = [];
+        const start = Math.max(1, currentPage - 2);
+        const end = Math.min(totalPages, currentPage + 2);
+        for (let i = start; i <= end; i += 1) {
+            pages.push(i);
+        }
+        return pages;
+    }, [currentPage, totalPages]);
 
     return (
         <section className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -84,7 +109,10 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
                         type="text"
                         placeholder="Search roles..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPage(1);
+                        }}
                         className="rounded-xl border border-border bg-surface px-4 py-2 pl-10 text-sm text-text-primary placeholder:text-text-secondary focus:border-primary focus:outline-none focus:ring-0 w-full sm:w-64"
                     />
                     <div className="pointer-events-none absolute left-3 top-2.5 text-text-secondary">
@@ -92,9 +120,71 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
                     </div>
                 </div>
             </div>
-            <div className="mt-4 overflow-x-auto">
+
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-text-secondary">
+                    Mostrando {loading || error ? 0 : paginatedRoles.length} de {totalFiltered} roles.
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>Page size</span>
+                        <select
+                            value={pageSize}
+                            onChange={(event) => {
+                                setPageSize(Number(event.target.value));
+                                setPage(1);
+                            }}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+                        >
+                            {pageSizes.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            disabled={!canPrev}
+                            onClick={() => setPage((prev) => prev - 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Prev
+                        </button>
+                        <div className="flex items-center gap-1">
+                            {visiblePages.map((visiblePage) => (
+                                <button
+                                    key={visiblePage}
+                                    type="button"
+                                    onClick={() => setPage(visiblePage)}
+                                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
+                                        ? "bg-primary text-white"
+                                        : "border border-border bg-card text-text-secondary"
+                                        }`}
+                                >
+                                    {visiblePage}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            disabled={!canNext}
+                            onClick={() => setPage((prev) => prev + 1)}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
                 <table className="min-w-full border-collapse text-left text-sm">
-                    <thead className="border-b border-border text-xs uppercase text-text-secondary">
+                    <thead className="sticky top-0 z-10 border-b border-border bg-card text-xs uppercase text-text-secondary">
                         <tr>
                             <th className="whitespace-nowrap px-3 py-3">Role Name</th>
                             <th className="whitespace-nowrap px-3 py-3">Description</th>
@@ -104,63 +194,113 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
                             <th className="whitespace-nowrap px-3 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-border">
-                        {filteredRoles.map((role) => (
-                            <tr key={role.id} className="text-text-secondary hover:bg-surface/50">
-                                <td className="whitespace-nowrap px-3 py-3 font-medium text-text-primary">
-                                    {role.name}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    {role.description || "-"}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <span className="inline-flex items-center rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-text-secondary">
-                                        {role._count?.users || 0}
-                                    </span>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3">
-                                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${role.isActive
-                                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
-                                        : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
-                                        }`}>
-                                        {role.isActive ? "Active" : "Inactive"}
-                                    </span>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 text-text-secondary">
-                                    {new Date(role.createdAt).toLocaleDateString()}
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-3 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <button
-                                            onClick={() => onEdit(role)}
-                                            title="Edit Role"
-                                            className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface hover:text-primary"
-                                        >
-                                            <PencilSquareIcon className="h-5 w-5" />
-                                        </button>
-                                        <button
-                                            onClick={() => toggleStatus(role.id, role.isActive)}
-                                            title={role.isActive ? "Deactivate Role" : "Activate Role"}
-                                            className={`rounded-lg p-2 transition-colors ${role.isActive
-                                                ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
-                                                : "text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
-                                                }`}
-                                        >
-                                            <PowerIcon className="h-5 w-5" />
-                                        </button>
-                                    </div>
+                    <tbody>
+                        {loading ? (
+                            <tr>
+                                <td colSpan={6} className="px-3 py-10 text-center text-sm text-text-secondary">
+                                    Cargando roles...
                                 </td>
                             </tr>
-                        ))}
-                        {filteredRoles.length === 0 && (
+                        ) : error ? (
+                            <tr>
+                                <td colSpan={6} className="px-3 py-10 text-center text-sm text-rose-600">
+                                    {error}
+                                </td>
+                            </tr>
+                        ) : paginatedRoles.length === 0 ? (
                             <tr>
                                 <td colSpan={6} className="px-3 py-10 text-center text-sm text-text-secondary">
                                     {searchQuery ? "No roles match your search." : "No roles found."}
                                 </td>
                             </tr>
+                        ) : (
+                            paginatedRoles.map((role) => (
+                                <tr key={role.id} className="border-b border-border text-text-secondary hover:bg-surface/50">
+                                    <td className="whitespace-nowrap px-3 py-3 font-medium text-text-primary">
+                                        {role.name}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        {role.description || "-"}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <span className="inline-flex items-center rounded-full bg-surface px-2.5 py-0.5 text-xs font-medium text-text-secondary">
+                                            {role._count?.users || 0}
+                                        </span>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3">
+                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${role.isActive
+                                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+                                            : "bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20"
+                                            }`}>
+                                            {role.isActive ? "Active" : "Inactive"}
+                                        </span>
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-text-secondary">
+                                        {new Date(role.createdAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => onEdit(role)}
+                                                title="Edit Role"
+                                                className="rounded-lg p-2 text-text-secondary transition-colors hover:bg-surface hover:text-primary"
+                                            >
+                                                <PencilSquareIcon className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => toggleStatus(role.id, role.isActive)}
+                                                title={role.isActive ? "Deactivate Role" : "Activate Role"}
+                                                className={`rounded-lg p-2 transition-colors ${role.isActive
+                                                    ? "text-rose-400 hover:bg-rose-50 hover:text-rose-600"
+                                                    : "text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
+                                                    }`}
+                                            >
+                                                <PowerIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
+                <span>
+                    Page {currentPage} of {totalPages} (total {totalFiltered})
+                </span>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        disabled={!canPrev}
+                        onClick={() => setPage((prev) => prev - 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Prev
+                    </button>
+                    {visiblePages.map((visiblePage) => (
+                        <button
+                            key={`bottom-${visiblePage}`}
+                            type="button"
+                            onClick={() => setPage(visiblePage)}
+                            className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
+                                ? "bg-primary text-white"
+                                : "border border-border bg-card text-text-secondary"
+                                }`}
+                        >
+                            {visiblePage}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        disabled={!canNext}
+                        onClick={() => setPage((prev) => prev + 1)}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
         </section>
     );

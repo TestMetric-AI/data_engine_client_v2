@@ -39,7 +39,14 @@ const navSections: NavSection[] = [
   {
     category: "Overview",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayerIcon },
+      {
+        label: "Dashboard",
+        icon: LayerIcon,
+        subItems: [
+          { label: "Management", href: "/dashboard" },
+          { label: "Test Results", href: "/dashboard/test-results" },
+        ],
+      },
       { label: "Test Information", href: "/test-information", icon: LayerIcon },
     ],
   },

@@ -8,7 +8,9 @@ export async function GET(req: NextRequest) {
     if ("error" in auth) return auth.error;
 
     try {
+        const activeOnly = req.nextUrl.searchParams.get("active") === "true";
         const roles = await prisma.role.findMany({
+            where: activeOnly ? { isActive: true } : undefined,
             orderBy: { createdAt: 'desc' },
             include: {
                 _count: {
