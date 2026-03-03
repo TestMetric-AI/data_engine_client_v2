@@ -148,3 +148,60 @@ export async function rejectTaskAction(id: string): Promise<ActionResponse> {
         return { success: false, message: "Failed to reject task" };
     }
 }
+
+export async function completeTaskAction(id: string): Promise<ActionResponse> {
+    await requireServer(Permission.TASKS_MANAGE);
+
+    try {
+        const session = await getServerSession(authOptions);
+        const user = await prisma.user.findUnique({
+            where: { id: session?.user.id },
+            include: { resource: true },
+        });
+        const authorId = user?.resource?.id;
+
+        // Find the final status (highest orderIndex)
+        const finalStatus = await prisma.resourceTaskStatus.findFirst({
+            orderBy: { orderIndex: "desc" },
+        });
+
+        if (!finalStatus) {
+            return { success: false, message: "No task statuses configured. Cannot complete task." };
+        }
+
+        // Transition inside a transaction with history tracking
+        await prisma.$transaction(async (tx) => {
+            const currentTask = await tx.resourceTask.findUnique({
+                where: { id },
+                select: { statusId: true },
+            });
+
+            if (!currentTask) throw new Error("Task not found");
+
+            if (currentTask.statusId === finalStatus.id) {
+                return; // Already in final status
+            }
+
+            await tx.resourceTask.update({
+                where: { id },
+                data: { statusId: finalStatus.id },
+            });
+
+            await tx.resourceTaskStatusHistory.create({
+                data: {
+                    taskId: id,
+                    fromStatusId: currentTask.statusId,
+                    toStatusId: finalStatus.id,
+                    changedById: authorId,
+                    notes: "Task marked as completed",
+                },
+            });
+        });
+
+        revalidatePath("/management/tasks");
+        return { success: true, message: "Task completed successfully" };
+    } catch (error: any) {
+        console.error("Error completing task:", error);
+        return { success: false, message: "Failed to complete task" };
+    }
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "./TaskForm";
@@ -109,6 +109,25 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
         } catch (error) {
             console.error(error);
             alert("Failed to reject task");
+        }
+    }
+
+    // Determine the final status id (highest orderIndex)
+    const finalStatusId = statuses.length > 0
+        ? statuses.reduce((prev, curr) => (curr.orderIndex > prev.orderIndex ? curr : prev)).id
+        : null;
+
+    async function handleComplete(id: string) {
+        if (!confirm("¿Estás seguro de que deseas marcar esta tarea como finalizada?")) return;
+        try {
+            const { completeTaskAction } = await import("./taskActions");
+            const result = await completeTaskAction(id);
+            if (!result.success) {
+                alert(result.message || "Failed to complete task");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to complete task");
         }
     }
 
@@ -258,6 +277,15 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                                     <XMarkIcon className="h-4 w-4" />
                                                 </button>
                                             </>
+                                        )}
+                                        {finalStatusId && task.status.id !== finalStatusId && (
+                                            <button
+                                                onClick={() => handleComplete(task.id)}
+                                                className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"
+                                                title="Marcar como finalizada"
+                                            >
+                                                <CheckCircleIcon className="h-4 w-4" />
+                                            </button>
                                         )}
                                         <div className="flex opacity-0 transition group-hover:opacity-100">
                                             <button
