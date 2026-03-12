@@ -37,10 +37,11 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             const prisma = (await import("@/lib/db")).default;
 
             const session = await getServerSession(authOptions);
-            if (!session?.user) return { canApprove: false, currentResourceId: null, currentUserRole: null };
+            if (!session?.user) return { canApprove: false, canManageTaskStatuses: false, currentResourceId: null, currentUserRole: null };
 
-            const [canApprove, user] = await Promise.all([
+            const [canApprove, canManageTaskStatuses, user] = await Promise.all([
                 Promise.resolve(session.user.permissions?.includes("APPROVE_TASKS") ?? false),
+                Promise.resolve(session.user.permissions?.includes("MANAGE_TASK_STATUSES") ?? false),
                 prisma.user.findUnique({
                     where: { id: session.user.id },
                     select: {
@@ -58,13 +59,14 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
 
             return {
                 canApprove: canApprove || isLead,
+                canManageTaskStatuses: canManageTaskStatuses || session.user.roles?.includes("ADMIN") || false,
                 currentResourceId: user?.resource?.id || null,
                 currentUserRole: user?.resource?.role?.name || null
             };
         })()
     ]);
 
-    const { canApprove, currentResourceId, currentUserRole } = userContext;
+    const { canApprove, canManageTaskStatuses, currentResourceId, currentUserRole } = userContext;
 
     return (
         <Suspense fallback={<div>Loading tasks...</div>}>
@@ -79,6 +81,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                 projects={projectsData.projects}
                 resources={resourcesData.resources as any}
                 canApprove={Boolean(canApprove)}
+                canManageTaskStatuses={Boolean(canManageTaskStatuses)}
                 currentResourceId={currentResourceId}
                 currentUserRole={currentUserRole}
             />

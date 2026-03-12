@@ -34,9 +34,10 @@ interface TasksTableProps {
     projects: Project[];
     resources: Resource[]; // For filter dropdown
     canApprove?: boolean;
+    currentResourceId?: string | null;
 }
 
-export default function TasksTable({ tasks, total, statuses, projects, resources, canApprove = false }: TasksTableProps) {
+export default function TasksTable({ tasks, total, statuses, projects, resources, canApprove = false, currentResourceId = null }: TasksTableProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -278,7 +279,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                                 </button>
                                             </>
                                         )}
-                                        {finalStatusId && task.status.id !== finalStatusId && (
+                                        {finalStatusId && task.status.id !== finalStatusId && task.resource?.id === currentResourceId && (
                                             <button
                                                 onClick={() => handleComplete(task.id)}
                                                 className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50"

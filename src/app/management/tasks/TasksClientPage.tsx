@@ -18,11 +18,12 @@ interface TasksClientPageProps {
     projects: Project[];
     resources: Resource[];
     canApprove: boolean;
+    canManageTaskStatuses: boolean;
     currentResourceId?: string | null;
     currentUserRole?: string | null;
 }
 
-export default function TasksClientPage({ tasks, total, statuses, projects, resources, canApprove, currentResourceId, currentUserRole }: TasksClientPageProps) {
+export default function TasksClientPage({ tasks, total, statuses, projects, resources, canApprove, canManageTaskStatuses, currentResourceId, currentUserRole }: TasksClientPageProps) {
     const [activeTab, setActiveTab] = useState<"tasks" | "statuses">("tasks");
 
     // Create Task Modal State
@@ -67,18 +68,20 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                     >
                         Tasks List
                     </button>
-                    <button
-                        onClick={() => setActiveTab("statuses")}
-                        className={`
-                            whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium
-                            ${activeTab === "statuses"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-text-secondary hover:border-border hover:text-text-primary"
-                            }
-                        `}
-                    >
-                        Task Statuses
-                    </button>
+                    {canManageTaskStatuses && (
+                        <button
+                            onClick={() => setActiveTab("statuses")}
+                            className={`
+                                whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium
+                                ${activeTab === "statuses"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-text-secondary hover:border-border hover:text-text-primary"
+                                }
+                            `}
+                        >
+                            Task Statuses
+                        </button>
+                    )}
                 </nav>
             </div>
 
@@ -94,6 +97,7 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                         projects={projects}
                         resources={resources}
                         canApprove={canApprove}
+                        currentResourceId={currentResourceId}
                     />
 
                     <Modal
