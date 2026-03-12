@@ -156,9 +156,10 @@ export async function completeTaskAction(id: string): Promise<ActionResponse> {
         const session = await getServerSession(authOptions);
         const user = await prisma.user.findUnique({
             where: { id: session?.user.id },
-            include: { resource: true },
+            include: { resource: true, roles: { select: { name: true } } },
         });
         const authorId = user?.resource?.id;
+        const isAdmin = user?.roles?.some((r: any) => r.name === "ADMIN");
 
         // Find the final status (highest orderIndex)
         const finalStatus = await prisma.resourceTaskStatus.findFirst({
@@ -170,13 +171,17 @@ export async function completeTaskAction(id: string): Promise<ActionResponse> {
         }
 
         // Transition inside a transaction with history tracking
-        await prisma.$transaction(async (tx) => {
+        const txResult = await prisma.$transaction(async (tx) => {
             const currentTask = await tx.resourceTask.findUnique({
                 where: { id },
-                select: { statusId: true },
+                select: { statusId: true, resourceId: true },
             });
 
             if (!currentTask) throw new Error("Task not found");
+
+            if (currentTask.resourceId !== authorId && !isAdmin) {
+                return { success: false, message: "Solo el usuario asignado puede finalizar esta tarea." };
+            }
 
             if (currentTask.statusId === finalStatus.id) {
                 return; // Already in final status
@@ -197,6 +202,10 @@ export async function completeTaskAction(id: string): Promise<ActionResponse> {
                 },
             });
         });
+
+        if (txResult && !txResult.success) {
+            return txResult;
+        }
 
         revalidatePath("/management/tasks");
         return { success: true, message: "Task completed successfully" };

@@ -97,6 +97,7 @@ export default function TasksClientPage({ tasks, total, statuses, projects, reso
                         projects={projects}
                         resources={resources}
                         canApprove={canApprove}
+                        currentResourceId={currentResourceId}
                     />
 
                     <Modal
