@@ -9,6 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "seed:test-results:cleanup": "node --env-file=.env --import tsx prisma/seed-clean-test-results.ts",
+    "db:backup": "node --env-file=.env --import tsx prisma/seed-backup.ts",
     "test": "jest",
     "test:watch": "jest --watch"
   },
