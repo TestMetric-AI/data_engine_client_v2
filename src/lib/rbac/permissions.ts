@@ -7,6 +7,7 @@ export const Permission = {
   TASKS_APPROVE:     "APPROVE_TASKS",
   ADMIN_ROLES:       "ADMIN_ROLES",
   ADMIN_USERS:       "ADMIN_USERS",
+  TASKS_STATUSES_MANAGE: "MANAGE_TASK_STATUSES",
 } as const;
 
 export type PermissionName = (typeof Permission)[keyof typeof Permission];
