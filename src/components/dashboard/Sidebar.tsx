@@ -48,6 +48,7 @@ const navSections: NavSection[] = [
         ],
       },
       { label: "Test Information", href: "/test-information", icon: LayerIcon },
+      { label: "Test Suites", href: "/test-suites", icon: LayerIcon },
     ],
   },
   {
@@ -242,3 +243,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
