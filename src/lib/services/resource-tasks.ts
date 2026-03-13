@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
+import { notifyNewTaskCreated } from "@/lib/services/teams-webhook";
 
 export type ResourceTaskCreateInput = Prisma.ResourceTaskCreateInput;
 export type ResourceTaskUpdateInput = Prisma.ResourceTaskUpdateInput;
@@ -40,13 +41,13 @@ export async function getResourceTasks({
             orderBy: { updatedAt: "desc" },
             include: {
                 resource: {
-                    select: { fullName: true, id: true }
+                    select: { fullName: true, id: true },
                 },
                 project: {
-                    select: { name: true, id: true, code: true }
+                    select: { name: true, id: true, code: true },
                 },
                 status: true,
-            }
+            },
         }),
         prisma.resourceTask.count({ where }),
     ]);
@@ -59,47 +60,70 @@ export async function getResourceTasks({
 }
 
 export async function createResourceTask(data: ResourceTaskCreateInput, authorId?: string) {
-    // We need to create the task AND the initial history entry.
-    // Prisma transaction is best here.
-
-    return prisma.$transaction(async (tx) => {
-        const task = await tx.resourceTask.create({
+    const task = await prisma.$transaction(async (tx) => {
+        const created = await tx.resourceTask.create({
             data,
         });
 
-        // Create initial history
         await tx.resourceTaskStatusHistory.create({
             data: {
-                taskId: task.id,
-                toStatusId: task.statusId, // Initial status
+                taskId: created.id,
+                toStatusId: created.statusId,
                 changedById: authorId,
                 notes: "Task created",
-            }
+            },
         });
 
-        return task;
+        return created;
     });
+
+    try {
+        const assignee = await prisma.resource.findUnique({
+            where: { id: task.resourceId },
+            select: { fullName: true, user: { select: { email: true } } },
+        });
+
+        let createdByName = "Sistema";
+        if (authorId) {
+            const author = await prisma.resource.findUnique({
+                where: { id: authorId },
+                select: { fullName: true },
+            });
+
+            if (author?.fullName) {
+                createdByName = author.fullName;
+            }
+        }
+
+        if (assignee?.user?.email) {
+            await notifyNewTaskCreated({
+                taskTitle: task.title,
+                assigneeName: assignee.fullName,
+                assigneeEmail: assignee.user.email,
+                createdByName,
+            });
+        }
+    } catch (err) {
+        console.error("[createResourceTask] Teams notification error:", err);
+    }
+
+    return task;
 }
 
 export async function updateResourceTask(id: string, data: ResourceTaskUpdateInput, authorId?: string) {
     return prisma.$transaction(async (tx) => {
-        // 1. Fetch current task INSIDE transaction to ensure lock/consistency
         const currentTask = await tx.resourceTask.findUnique({
             where: { id },
-            select: { statusId: true }
+            select: { statusId: true },
         });
 
         if (!currentTask) throw new Error("Task not found");
 
-        // 2. Perform update
         const updatedTask = await tx.resourceTask.update({
             where: { id },
             data,
         });
 
-        // 3. Check for Status Change
-        // Compare the old statusId with the new one.
-        // We look at the Resulting task's statusId vs the Old one.
         if (updatedTask.statusId !== currentTask.statusId) {
             await tx.resourceTaskStatusHistory.create({
                 data: {
@@ -108,7 +132,7 @@ export async function updateResourceTask(id: string, data: ResourceTaskUpdateInp
                     toStatusId: updatedTask.statusId,
                     changedById: authorId,
                     notes: "Status updated",
-                }
+                },
             });
         }
 
@@ -130,13 +154,13 @@ export async function getResourceTaskById(id: string) {
             project: true,
             status: true,
             statusHistory: {
-                orderBy: { changedAt: 'desc' },
+                orderBy: { changedAt: "desc" },
                 include: {
                     fromStatus: true,
                     toStatus: true,
                     changedBy: true,
-                }
-            }
-        }
+                },
+            },
+        },
     });
 }
