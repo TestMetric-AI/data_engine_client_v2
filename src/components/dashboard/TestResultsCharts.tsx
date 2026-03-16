@@ -160,7 +160,10 @@ function StatusDonut({ data }: { data: StatusDistribution[] }) {
                                 border: "1px solid var(--border)",
                                 borderRadius: "12px",
                                 fontSize: "13px",
+                                color: "var(--text-primary)",
                             }}
+                            itemStyle={{ color: "var(--text-primary)" }}
+                            labelStyle={{ color: "var(--text-primary)" }}
                         />
                     </PieChart>
                 </ResponsiveContainer>
@@ -222,7 +225,10 @@ function SuiteMatchDonut({ data }: { data: TestResultsDashboardData["suiteMatchD
                                     border: "1px solid var(--border)",
                                     borderRadius: "12px",
                                     fontSize: "13px",
+                                    color: "var(--text-primary)",
                                 }}
+                                itemStyle={{ color: "var(--text-primary)" }}
+                                labelStyle={{ color: "var(--text-primary)" }}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -327,7 +333,10 @@ function SlowestTestsChart({ data }: { data: SlowestTest[] }) {
                                 border: "1px solid var(--border)",
                                 borderRadius: "12px",
                                 fontSize: "13px",
+                                color: "var(--text-primary)",
                             }}
+                            itemStyle={{ color: "var(--text-primary)" }}
+                            labelStyle={{ color: "var(--text-primary)" }}
                             formatter={(value: number | undefined, name: string | undefined) => [formatDuration(value ?? 0), name === "avgDuration" ? "Avg" : "Max"]}
                             labelFormatter={(_label: ReactNode, payload) => {
                                 const item = payload?.[0]?.payload as { fullTitle?: string; file?: string; runs?: number } | undefined;
@@ -444,25 +453,25 @@ function ProjectBreakdownChart({ data }: { data: ProjectBreakdown[] }) {
     );
 }
 
-function BranchHealth({ data }: { data: TestResultsDashboardData["recentBranches"] }) {
+function TestFileHealth({ data }: { data: TestResultsDashboardData["testFileHealth"] }) {
     const chartData = data.map((b) => ({
-        branch: b.branch.length > 20 ? b.branch.slice(0, 20) + "..." : b.branch,
-        fullBranch: b.branch,
+        testFile: b.testFile.length > 28 ? b.testFile.slice(0, 28) + "..." : b.testFile,
+        fullTestFile: b.testFile,
         passed: b.passed,
         failed: b.failed,
     }));
 
     return (
         <Card className="col-span-1 lg:col-span-2">
-            <p className="font-display text-lg font-semibold text-text-primary">Branch Health</p>
-            <p className="mb-4 text-sm text-text-secondary">Recent branches by test outcomes</p>
+            <p className="font-display text-lg font-semibold text-text-primary">Test File Health</p>
+            <p className="mb-4 text-sm text-text-secondary">Recent test files by test outcomes</p>
             {chartData.length === 0 ? (
-                <p className="py-8 text-center text-sm text-text-secondary">No branch data</p>
+                <p className="py-8 text-center text-sm text-text-secondary">No test file data</p>
             ) : (
                 <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                        <XAxis dataKey="branch" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} />
+                        <XAxis dataKey="testFile" tick={{ fontSize: 11, fill: "var(--text-secondary)" }} />
                         <YAxis tick={{ fontSize: 12, fill: "var(--text-secondary)" }} />
                         <Tooltip
                             contentStyle={{
@@ -470,10 +479,13 @@ function BranchHealth({ data }: { data: TestResultsDashboardData["recentBranches
                                 border: "1px solid var(--border)",
                                 borderRadius: "12px",
                                 fontSize: "13px",
+                                color: "var(--text-primary)",
                             }}
+                            itemStyle={{ color: "var(--text-primary)" }}
+                            labelStyle={{ color: "var(--text-primary)" }}
                             labelFormatter={(_label: ReactNode, payload) => {
-                                const item = payload?.[0]?.payload as { fullBranch?: string } | undefined;
-                                return item?.fullBranch ?? "";
+                                const item = payload?.[0]?.payload as { fullTestFile?: string } | undefined;
+                                return item?.fullTestFile ?? "";
                             }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: "13px" }} />
@@ -621,7 +633,7 @@ export default function TestResultsCharts({
 
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
                 <FlakyTestsTable data={data.flakyTests} />
-                <BranchHealth data={data.recentBranches} />
+                <TestFileHealth data={data.testFileHealth} />
             </div>
 
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -630,3 +642,9 @@ export default function TestResultsCharts({
         </div>
     );
 }
+
+
+
+
+
+

@@ -35,7 +35,7 @@ describe("TestResultsCharts", () => {
           slowestTests: [],
           flakyTests: [],
           projectBreakdown: [],
-          recentBranches: [],
+          testFileHealth: [],
           suiteMatchDistribution: {
             matched: 7,
             unmatched: 3,
@@ -55,3 +55,4 @@ describe("TestResultsCharts", () => {
     expect(screen.getByText("No match")).toBeInTheDocument();
   });
 });
+

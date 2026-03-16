@@ -66,7 +66,7 @@ export type TestResultsDashboardData = {
     slowestTests: SlowestTest[];
     flakyTests: FlakyTest[];
     projectBreakdown: ProjectBreakdown[];
-    recentBranches: { branch: string; total: number; passed: number; failed: number }[];
+    testFileHealth: { testFile: string; total: number; passed: number; failed: number }[];
     suiteMatchDistribution: SuiteMatchDistribution;
 };
 
@@ -113,7 +113,7 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         slowestResults,
         flakyResults,
         projectResults,
-        branchResults,
+        testFileResults,
         matchSeedRows,
         suiteRows,
     ] = await Promise.all([
@@ -173,15 +173,15 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             LIMIT 10
         `,
         prisma.$queryRaw<
-            { branch: string; total: bigint; passed: bigint; failed: bigint }[]
+            { testFile: string; total: bigint; passed: bigint; failed: bigint }[]
         >`
-            SELECT COALESCE(branch, 'unknown') as branch,
+            SELECT COALESCE(test_file, 'unknown') as "testFile",
                    COUNT(*)::int as total,
                    COUNT(*) FILTER (WHERE test_status = 'passed')::int as passed,
                    COUNT(*) FILTER (WHERE test_status = 'failed')::int as failed
             FROM test_results
-            ${whereClause} AND branch IS NOT NULL
-            GROUP BY branch
+            ${whereClause} AND test_file IS NOT NULL
+            GROUP BY test_file
             ORDER BY MAX(created_at) DESC
             LIMIT 8
         `,
@@ -269,8 +269,8 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         };
     });
 
-    const recentBranches = branchResults.map((r) => ({
-        branch: r.branch,
+    const testFileHealth = testFileResults.map((r) => ({
+        testFile: r.testFile,
         total: Number(r.total),
         passed: Number(r.passed),
         failed: Number(r.failed),
@@ -288,7 +288,7 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         slowestTests,
         flakyTests,
         projectBreakdown,
-        recentBranches,
+        testFileHealth,
         suiteMatchDistribution,
     };
 }
@@ -320,3 +320,7 @@ export async function getTestResultsDashboardData(
     );
     return cachedGetter();
 }
+
+
+
+
