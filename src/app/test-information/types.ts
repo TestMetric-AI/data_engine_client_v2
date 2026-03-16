@@ -25,6 +25,11 @@ export interface TestResultRow {
   runUrl: string | null;
   provider: string | null;
   createdAt: string; // ISO string
+  matched: boolean;
+  matchedBy: "tc" | "caseName" | null;
+  matchedSuiteId: string | null;
+  matchedSuiteTestId: string | null;
+  matchedSuiteCaseName: string | null;
 }
 
 export interface TestResultsFilter {
@@ -33,6 +38,7 @@ export interface TestResultsFilter {
   project?: string;
   branch?: string;
   environment?: string;
+  matchedOnly?: boolean;
   dateFrom?: string;
   dateTo?: string;
   page?: number;
@@ -43,6 +49,7 @@ export interface TestResultsResult {
   rows: TestResultRow[];
   total: number;
   totalPages: number;
+  matchedCount: number;
   projects: string[];
   branches: string[];
   environments: string[];

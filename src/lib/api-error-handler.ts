@@ -67,16 +67,15 @@ export function handleApiError(
         );
     }
 
-    // Prisma known request errors → 400/409
+    // Prisma known request errors → mapped status
     if (isPrismaKnownError(error)) {
         const prismaMsg = getPrismaErrorMessage(error);
         console.warn(`[API] ${context}: Prisma error ${error.code} — ${prismaMsg}`);
-        const status = error.code === "P2002" ? 409 : 400;
+        const status = getPrismaErrorStatus(error.code);
         return NextResponse.json({ message: prismaMsg }, { status });
     }
 
     // Everything else → 500
-    const msg = error instanceof Error ? error.message : "Unknown error";
     console.error(`[API] ${context}:`, error);
     return NextResponse.json(
         { message: "Internal server error" },
@@ -111,7 +110,20 @@ function getPrismaErrorMessage(error: PrismaKnownRequestError): string {
             return "Record not found.";
         case "P2003":
             return "Related record not found (foreign key constraint).";
+        case "P2021":
+            return "Database schema is out of date (missing table). Run Prisma migrations.";
         default:
             return `Database error (${error.code}).`;
+    }
+}
+
+function getPrismaErrorStatus(code: string): number {
+    switch (code) {
+        case "P2002":
+            return 409;
+        case "P2021":
+            return 503;
+        default:
+            return 400;
     }
 }

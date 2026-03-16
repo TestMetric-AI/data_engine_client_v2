@@ -280,3 +280,16 @@ model TestResult {
   @@index([pipelineId])
   @@map("test_results")
 }
+
+model TestSuite {
+  id           String   @id @default(uuid()) @db.Uuid
+  testSuiteId  String   @default(cuid()) @map("test_suite_id") @db.Text
+  specFile     String   @map("spec_file") @db.Text
+  testId       String   @map("test_id") @db.Text
+  testCaseName String   @map("test_case_name") @db.Text
+  testCaseTags String[] @map("test_case_tags") @default([])
+
+  @@index([testSuiteId])
+  @@map("test_suites")
+}
+

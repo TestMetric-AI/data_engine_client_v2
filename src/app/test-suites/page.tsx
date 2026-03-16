@@ -1,39 +1,31 @@
 import { Suspense } from "react";
-import { getTestResults } from "./actions";
-import TestResultsTable from "@/app/test-information/TestResultsTable";
+import { getTestSuites } from "./actions";
+import TestSuitesTable from "./TestSuitesTable";
 import { PAGE_SIZE } from "./types";
 
 export const revalidate = 300;
 
-interface TestInformationPageProps {
+interface TestSuitesPageProps {
   searchParams: Promise<{
     search?: string;
-    status?: string;
-    project?: string;
-    branch?: string;
-    environment?: string;
-    matched?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    testSuiteId?: string;
+    specFile?: string;
+    testId?: string;
     page?: string;
     pageSize?: string;
   }>;
 }
 
-export default async function TestInformationPage({ searchParams }: TestInformationPageProps) {
+export default async function TestSuitesPage({ searchParams }: TestSuitesPageProps) {
   const params = await searchParams;
   const page = params.page ? parseInt(params.page, 10) : 1;
   const pageSize = params.pageSize ? parseInt(params.pageSize, 10) : PAGE_SIZE;
 
-  const data = await getTestResults({
+  const data = await getTestSuites({
     search: params.search,
-    status: params.status,
-    project: params.project,
-    branch: params.branch,
-    environment: params.environment,
-    matchedOnly: params.matched === "1",
-    dateFrom: params.dateFrom,
-    dateTo: params.dateTo,
+    testSuiteId: params.testSuiteId,
+    specFile: params.specFile,
+    testId: params.testId,
     page,
     pageSize,
   });
@@ -48,16 +40,15 @@ export default async function TestInformationPage({ searchParams }: TestInformat
         </div>
       }
     >
-      <TestResultsTable
+      <TestSuitesTable
         rows={data.rows}
         total={data.total}
         totalPages={data.totalPages}
-        matchedCount={data.matchedCount}
         currentPage={page}
         currentPageSize={pageSize}
-        projects={data.projects}
-        branches={data.branches}
-        environments={data.environments}
+        testSuiteIds={data.testSuiteIds}
+        specFiles={data.specFiles}
+        testIds={data.testIds}
       />
     </Suspense>
   );

@@ -1,0 +1,146 @@
+jest.mock("next/server", () => ({
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number }) => ({
+      status: init?.status ?? 200,
+      json: async () => body,
+    }),
+  },
+}));
+
+import type { NextRequest } from "next/server";
+import { DELETE, PUT } from "../route";
+import { deleteTestSuiteById, updateTestSuiteById } from "@/lib/services/test-suites";
+import { requireApi } from "@/lib/rbac";
+
+jest.mock("@/lib/services/test-suites", () => ({
+  updateTestSuiteById: jest.fn(),
+  deleteTestSuiteById: jest.fn(),
+}));
+
+jest.mock("@/lib/rbac", () => ({
+  Permission: {
+    TEST_SUITES_MANAGE: "MANAGE_TEST_SUITES",
+  },
+  requireApi: jest.fn(),
+}));
+
+function mockJsonRequest(body: unknown): NextRequest {
+  return {
+    headers: new Headers({ "content-type": "application/json" }),
+    json: async () => body,
+  } as unknown as NextRequest;
+}
+
+function mockDeleteRequest(): NextRequest {
+  return {
+    headers: new Headers(),
+  } as unknown as NextRequest;
+}
+
+describe("/api/test-suites/[id] route", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("returns 401 on PUT when unauthorized", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({
+      error: { status: 401, json: async () => ({ message: "Unauthorized" }) },
+    });
+
+    const res = await PUT(mockJsonRequest({ testCaseName: "updated" }), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 403 on PUT when missing permission", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({
+      error: { status: 403, json: async () => ({ message: "Forbidden" }) },
+    });
+
+    const res = await PUT(mockJsonRequest({ testCaseName: "updated" }), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 on PUT when id is invalid", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+
+    const res = await PUT(mockJsonRequest({ testCaseName: "updated" }), {
+      params: Promise.resolve({ id: "not-uuid" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 on PUT with empty payload", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+
+    const res = await PUT(mockJsonRequest({}), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 200 on PUT success", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+    (updateTestSuiteById as jest.Mock).mockResolvedValue({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" });
+
+    const id = "f7f137f3-6698-4dc6-9f89-80f6a1a6f124";
+    const res = await PUT(mockJsonRequest({ testCaseName: "updated" }), {
+      params: Promise.resolve({ id }),
+    });
+
+    expect(updateTestSuiteById).toHaveBeenCalledWith(id, { testCaseName: "updated" });
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 404 on PUT when record does not exist", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+    const err = Object.assign(new Error("TestSuite not found."), { name: "TestSuiteNotFoundError" });
+    (updateTestSuiteById as jest.Mock).mockRejectedValue(err);
+
+    const res = await PUT(mockJsonRequest({ testCaseName: "updated" }), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 401 on DELETE when unauthorized", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({
+      error: { status: 401, json: async () => ({ message: "Unauthorized" }) },
+    });
+
+    const res = await DELETE(mockDeleteRequest(), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 on DELETE when record does not exist", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+    const err = Object.assign(new Error("TestSuite not found."), { name: "TestSuiteNotFoundError" });
+    (deleteTestSuiteById as jest.Mock).mockRejectedValue(err);
+
+    const res = await DELETE(mockDeleteRequest(), {
+      params: Promise.resolve({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" }),
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 200 on DELETE success", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+    (deleteTestSuiteById as jest.Mock).mockResolvedValue({ id: "f7f137f3-6698-4dc6-9f89-80f6a1a6f124" });
+
+    const id = "f7f137f3-6698-4dc6-9f89-80f6a1a6f124";
+    const res = await DELETE(mockDeleteRequest(), { params: Promise.resolve({ id }) });
+    const body = await res.json();
+
+    expect(deleteTestSuiteById).toHaveBeenCalledWith(id);
+    expect(res.status).toBe(200);
+    expect(body.message).toBe("TestSuite deleted");
+  });
+});

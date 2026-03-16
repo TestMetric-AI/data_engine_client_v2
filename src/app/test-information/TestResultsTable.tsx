@@ -11,6 +11,7 @@ interface TestResultsTableProps {
   rows: TestResultRow[];
   total: number;
   totalPages: number;
+  matchedCount: number;
   currentPage: number;
   currentPageSize: number;
   projects: string[];
@@ -31,6 +32,11 @@ const STATUS_LABELS: Record<string, string> = TEST_STATUS_OPTIONS.reduce(
   {} as Record<string, string>,
 );
 
+const MATCHED_BY_LABELS: Record<"tc" | "caseName", string> = {
+  tc: "TC",
+  caseName: "Case name",
+};
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -40,6 +46,7 @@ export default function TestResultsTable({
   rows,
   total,
   totalPages,
+  matchedCount,
   currentPage,
   currentPageSize,
   projects,
@@ -57,6 +64,7 @@ export default function TestResultsTable({
   const [project, setProject] = useState(searchParams.get("project") || "");
   const [branch, setBranch] = useState(searchParams.get("branch") || "");
   const [environment, setEnvironment] = useState(searchParams.get("environment") || "");
+  const [matchedOnly, setMatchedOnly] = useState(searchParams.get("matched") === "1" ? "1" : "");
   const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
 
@@ -92,7 +100,7 @@ export default function TestResultsTable({
   }, [search]);
 
   function applyFilters() {
-    updateURL({ status, project, branch, environment, dateFrom, dateTo });
+    updateURL({ status, project, branch, environment, matched: matchedOnly, dateFrom, dateTo });
   }
 
   function clearFilters() {
@@ -101,13 +109,14 @@ export default function TestResultsTable({
     setProject("");
     setBranch("");
     setEnvironment("");
+    setMatchedOnly("");
     setDateFrom("");
     setDateTo("");
     router.push(pathname);
   }
 
-  const hasAnyFilter = status || project || branch || environment || dateFrom || dateTo;
-  const filterCount = [status, project, branch, environment, dateFrom, dateTo].filter(Boolean).length;
+  const hasAnyFilter = status || project || branch || environment || matchedOnly || dateFrom || dateTo;
+  const filterCount = [status, project, branch, environment, matchedOnly, dateFrom, dateTo].filter(Boolean).length;
 
   const canPrev = currentPage > 1;
   const canNext = currentPage < totalPages;
@@ -163,6 +172,17 @@ export default function TestResultsTable({
       options: [{ value: "", label: "All" }, ...environments.map((e) => ({ value: e, label: e }))],
     },
     {
+      key: "matched",
+      label: "Suite match",
+      type: "select",
+      value: matchedOnly,
+      onChange: setMatchedOnly,
+      options: [
+        { value: "", label: "All" },
+        { value: "1", label: "Matched only" },
+      ],
+    },
+    {
       key: "dateFrom",
       label: "Date from",
       type: "date",
@@ -183,6 +203,7 @@ export default function TestResultsTable({
     project ? `Project: ${project}` : null,
     branch ? `Branch: ${branch}` : null,
     environment ? `Environment: ${environment}` : null,
+    matchedOnly ? "Suite match: Matched only" : null,
     dateFrom || dateTo ? `Date: ${dateFrom || "Any"} to ${dateTo || "Any"}` : null,
   ].filter(Boolean) as string[];
 
@@ -236,7 +257,7 @@ export default function TestResultsTable({
             <p className="mt-2 text-sm text-text-secondary">
               Browse and filter individual test results from CI/CD pipelines.
             </p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Total</p>
                 <p className="mt-1 text-sm font-semibold text-text-primary">{total.toLocaleString()}</p>
@@ -244,6 +265,10 @@ export default function TestResultsTable({
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Showing</p>
                 <p className="mt-1 text-sm font-semibold text-text-primary">{rows.length.toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Matched</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">{matchedCount.toLocaleString()}</p>
               </div>
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Current page</p>
@@ -403,10 +428,11 @@ export default function TestResultsTable({
           <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-4 bg-gradient-to-r from-card to-transparent" />
           <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-4 bg-gradient-to-l from-card to-transparent" />
           <div className="max-h-[65vh] overflow-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
               <thead className="sticky top-0 z-20 border-b border-border bg-card text-xs uppercase text-text-secondary">
                 <tr>
                   <th className="whitespace-nowrap px-4 py-3.5">Test Title</th>
+                  <th className="whitespace-nowrap px-4 py-3.5">Suite Match</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Status</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Duration</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Project</th>
@@ -421,7 +447,7 @@ export default function TestResultsTable({
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12">
+                    <td colSpan={11} className="px-6 py-12">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
                           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
@@ -454,6 +480,26 @@ export default function TestResultsTable({
                     >
                       <td className="max-w-xs truncate whitespace-nowrap px-4 py-3.5 font-medium text-text-primary" title={row.testTitle}>
                         {row.testTitle}
+                      </td>
+                      <td className="max-w-[280px] px-4 py-3.5 text-xs">
+                        {row.matched ? (
+                          <div className="flex flex-col gap-1.5 text-text-secondary">
+                            <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
+                              Matched
+                            </span>
+                            <span className="truncate text-text-primary" title={row.matchedSuiteCaseName ?? undefined}>
+                              {row.matchedSuiteCaseName}
+                            </span>
+                            <span className="text-[11px] uppercase tracking-wide">
+                              {row.matchedBy ? MATCHED_BY_LABELS[row.matchedBy] : ""}
+                              {row.matchedSuiteTestId ? ` · ${row.matchedSuiteTestId}` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 font-semibold text-rose-700">
+                            No match
+                          </span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5">
                         <span
@@ -547,3 +593,8 @@ export default function TestResultsTable({
     </div>
   );
 }
+
+
+
+
+

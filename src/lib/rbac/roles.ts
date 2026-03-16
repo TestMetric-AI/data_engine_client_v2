@@ -7,6 +7,7 @@ export const RolePermissions: Record<string, PermissionName[]> = {
     Permission.USERS_MANAGE,
     Permission.PROJECTS_MANAGE,
     Permission.RESOURCES_MANAGE,
+    Permission.TEST_SUITES_MANAGE,
     Permission.TASKS_MANAGE,
     Permission.TASKS_APPROVE,
   ],
