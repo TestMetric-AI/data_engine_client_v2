@@ -7,6 +7,7 @@ import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { TestResultsFilter, TestResultsResult, TestResultRow } from "./types";
 import { PAGE_SIZE } from "./types";
 import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
+import { createTestSuiteMatcher } from "@/lib/services/test-result-suite-matcher";
 
 async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResultsResult> {
   await cleanupExpiredTestResults();
@@ -50,7 +51,7 @@ async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResults
     }
   }
 
-  const [results, total, projectValues, branchValues, environmentValues] = await Promise.all([
+  const [results, total, projectValues, branchValues, environmentValues, suiteRows] = await Promise.all([
     prisma.testResult.findMany({
       where,
       select: {
@@ -91,12 +92,32 @@ async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResults
       distinct: ["environment"],
       where: { environment: { not: null } },
     }),
+    prisma.testSuite.findMany({
+      select: {
+        id: true,
+        testSuiteId: true,
+        specFile: true,
+        testId: true,
+        testCaseName: true,
+      },
+    }),
   ]);
 
-  const rows: TestResultRow[] = results.map((r) => ({
-    ...r,
-    createdAt: r.createdAt.toISOString(),
-  }));
+  const matchSuite = createTestSuiteMatcher(suiteRows);
+
+  const rows: TestResultRow[] = results.map((r) => {
+    const match = matchSuite({ testTitle: r.testTitle, testFile: r.testFile });
+
+    return {
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      matched: Boolean(match),
+      matchedBy: match?.matchedBy ?? null,
+      matchedSuiteId: match?.suite.testSuiteId ?? null,
+      matchedSuiteTestId: match?.suite.testId ?? null,
+      matchedSuiteCaseName: match?.suite.testCaseName ?? null,
+    };
+  });
 
   return {
     rows,

@@ -31,6 +31,11 @@ const STATUS_LABELS: Record<string, string> = TEST_STATUS_OPTIONS.reduce(
   {} as Record<string, string>,
 );
 
+const MATCHED_BY_LABELS: Record<"tc" | "caseName", string> = {
+  tc: "TC",
+  caseName: "Case name",
+};
+
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
@@ -403,10 +408,11 @@ export default function TestResultsTable({
           <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-4 bg-gradient-to-r from-card to-transparent" />
           <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-4 bg-gradient-to-l from-card to-transparent" />
           <div className="max-h-[65vh] overflow-auto rounded-xl border border-border">
-            <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
               <thead className="sticky top-0 z-20 border-b border-border bg-card text-xs uppercase text-text-secondary">
                 <tr>
                   <th className="whitespace-nowrap px-4 py-3.5">Test Title</th>
+                  <th className="whitespace-nowrap px-4 py-3.5">Suite Match</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Status</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Duration</th>
                   <th className="whitespace-nowrap px-4 py-3.5">Project</th>
@@ -421,7 +427,7 @@ export default function TestResultsTable({
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12">
+                    <td colSpan={11} className="px-6 py-12">
                       <div className="flex flex-col items-center justify-center gap-3 text-center">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface text-text-secondary">
                           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
@@ -454,6 +460,26 @@ export default function TestResultsTable({
                     >
                       <td className="max-w-xs truncate whitespace-nowrap px-4 py-3.5 font-medium text-text-primary" title={row.testTitle}>
                         {row.testTitle}
+                      </td>
+                      <td className="max-w-[280px] px-4 py-3.5 text-xs">
+                        {row.matched ? (
+                          <div className="flex flex-col gap-1.5 text-text-secondary">
+                            <span className="inline-flex w-fit rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-700">
+                              Matched
+                            </span>
+                            <span className="truncate text-text-primary" title={row.matchedSuiteCaseName ?? undefined}>
+                              {row.matchedSuiteCaseName}
+                            </span>
+                            <span className="text-[11px] uppercase tracking-wide">
+                              {row.matchedBy ? MATCHED_BY_LABELS[row.matchedBy] : ""}
+                              {row.matchedSuiteTestId ? ` · ${row.matchedSuiteTestId}` : ""}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-1 font-semibold text-rose-700">
+                            No match
+                          </span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3.5">
                         <span
@@ -547,3 +573,4 @@ export default function TestResultsTable({
     </div>
   );
 }
+

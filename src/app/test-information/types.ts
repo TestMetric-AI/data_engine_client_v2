@@ -25,6 +25,11 @@ export interface TestResultRow {
   runUrl: string | null;
   provider: string | null;
   createdAt: string; // ISO string
+  matched: boolean;
+  matchedBy: "tc" | "caseName" | null;
+  matchedSuiteId: string | null;
+  matchedSuiteTestId: string | null;
+  matchedSuiteCaseName: string | null;
 }
 
 export interface TestResultsFilter {
