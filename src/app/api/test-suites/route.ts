@@ -3,6 +3,7 @@ import { z } from "zod";
 import { verifyApiAuth } from "@/lib/auth-helper";
 import { handleApiError } from "@/lib/api-error-handler";
 import { createTestSuites, listTestSuites } from "@/lib/services/test-suites";
+import { Permission, requireApi } from "@/lib/rbac";
 
 const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -13,7 +14,6 @@ const querySchema = z.object({
 });
 
 const testSuiteSchema = z.object({
-  testSuiteId: z.string().trim().min(1),
   specFile: z.string().trim().min(1),
   testId: z.string().trim().min(1),
   testCaseName: z.string().trim().min(1),
@@ -60,8 +60,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await verifyApiAuth(request))) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  const auth = await requireApi(Permission.TEST_SUITES_MANAGE);
+  if ("error" in auth) {
+    return auth.error;
   }
 
   try {
@@ -75,10 +76,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { count } = await createTestSuites(parsed.data);
+    const { count, skipped } = await createTestSuites(parsed.data);
 
-    return NextResponse.json({ message: "Test suites saved", count }, { status: 201 });
+    return NextResponse.json({ message: "Test suites saved", count, skipped }, { status: 201 });
   } catch (error) {
     return handleApiError(error, "creating test suites");
   }
 }
+
+
+
+
+
+

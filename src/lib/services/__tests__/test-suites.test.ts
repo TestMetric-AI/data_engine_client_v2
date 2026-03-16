@@ -6,6 +6,11 @@ import {
   TestSuiteNotFoundError,
   updateTestSuiteById,
 } from "../test-suites";
+import { randomUUID } from "crypto";
+
+jest.mock("crypto", () => ({
+  randomUUID: jest.fn(),
+}));
 
 jest.mock("@/lib/db", () => ({
   __esModule: true,
@@ -24,6 +29,9 @@ jest.mock("@/lib/db", () => ({
 describe("TestSuites Service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (randomUUID as jest.Mock).mockReset();
+    let sequence = 0;
+    (randomUUID as jest.Mock).mockImplementation(() => `uuid-${++sequence}`);
   });
 
   it("lists test suites with pagination and filters", async () => {
@@ -59,10 +67,10 @@ describe("TestSuites Service", () => {
   });
 
   it("creates single payload and defaults tags", async () => {
+    (prisma.testSuite.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.testSuite.createMany as jest.Mock).mockResolvedValue({ count: 1 });
 
     const result = await createTestSuites({
-      testSuiteId: "suite-a",
       specFile: "file.spec.ts",
       testId: "t-1",
       testCaseName: "case 1",
@@ -71,7 +79,7 @@ describe("TestSuites Service", () => {
     expect(prisma.testSuite.createMany).toHaveBeenCalledWith({
       data: [
         {
-          testSuiteId: "suite-a",
+          testSuiteId: "suite-uuid-1",
           specFile: "file.spec.ts",
           testId: "t-1",
           testCaseName: "case 1",
@@ -79,21 +87,20 @@ describe("TestSuites Service", () => {
         },
       ],
     });
-    expect(result).toEqual({ count: 1 });
+    expect(result).toEqual({ count: 1, skipped: 0 });
   });
 
   it("creates batch payload", async () => {
+    (prisma.testSuite.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.testSuite.createMany as jest.Mock).mockResolvedValue({ count: 2 });
 
     const result = await createTestSuites([
       {
-        testSuiteId: "suite-a",
         specFile: "a.spec.ts",
         testId: "t-1",
         testCaseName: "case 1",
       },
       {
-        testSuiteId: "suite-b",
         specFile: "b.spec.ts",
         testId: "t-2",
         testCaseName: "case 2",
@@ -104,14 +111,14 @@ describe("TestSuites Service", () => {
     expect(prisma.testSuite.createMany).toHaveBeenCalledWith({
       data: [
         {
-          testSuiteId: "suite-a",
+          testSuiteId: "suite-uuid-1",
           specFile: "a.spec.ts",
           testId: "t-1",
           testCaseName: "case 1",
           testCaseTags: [],
         },
         {
-          testSuiteId: "suite-b",
+          testSuiteId: "suite-uuid-2",
           specFile: "b.spec.ts",
           testId: "t-2",
           testCaseName: "case 2",
@@ -119,7 +126,75 @@ describe("TestSuites Service", () => {
         },
       ],
     });
-    expect(result).toEqual({ count: 2 });
+    expect(result).toEqual({ count: 2, skipped: 0 });
+  });
+
+  it("skips duplicates from payload and existing rows", async () => {
+    (prisma.testSuite.findMany as jest.Mock).mockResolvedValue([
+      {
+        specFile: "b.spec.ts",
+        testId: "t-2",
+        testCaseName: "case 2",
+      },
+    ]);
+    (prisma.testSuite.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+    const result = await createTestSuites([
+      {
+        specFile: "a.spec.ts",
+        testId: "t-1",
+        testCaseName: "case 1",
+      },
+      {
+        specFile: "a.spec.ts",
+        testId: "t-1",
+        testCaseName: "case 1",
+      },
+      {
+        specFile: "b.spec.ts",
+        testId: "t-2",
+        testCaseName: "case 2",
+      },
+    ]);
+
+    expect(prisma.testSuite.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          testSuiteId: "suite-uuid-1",
+          specFile: "a.spec.ts",
+          testId: "t-1",
+          testCaseName: "case 1",
+          testCaseTags: [],
+        },
+      ],
+    });
+    expect(result).toEqual({ count: 1, skipped: 2 });
+  });
+
+  it("returns zero created when all rows are duplicates", async () => {
+    (prisma.testSuite.findMany as jest.Mock).mockResolvedValue([
+      {
+        specFile: "a.spec.ts",
+        testId: "t-1",
+        testCaseName: "case 1",
+      },
+    ]);
+
+    const result = await createTestSuites([
+      {
+        specFile: "a.spec.ts",
+        testId: "t-1",
+        testCaseName: "case 1",
+      },
+      {
+        specFile: "a.spec.ts",
+        testId: "t-1",
+        testCaseName: "case 1",
+      },
+    ]);
+
+    expect(prisma.testSuite.createMany).not.toHaveBeenCalled();
+    expect(result).toEqual({ count: 0, skipped: 2 });
   });
 
   it("updates by id when record exists", async () => {
@@ -160,3 +235,5 @@ describe("TestSuites Service", () => {
     await expect(deleteTestSuiteById("missing")).rejects.toBeInstanceOf(TestSuiteNotFoundError);
   });
 });
+
+

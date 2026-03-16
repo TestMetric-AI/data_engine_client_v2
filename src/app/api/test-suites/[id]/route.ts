@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyApiAuth } from "@/lib/auth-helper";
 import { handleApiError } from "@/lib/api-error-handler";
 import { deleteTestSuiteById, updateTestSuiteById } from "@/lib/services/test-suites";
+import { Permission, requireApi } from "@/lib/rbac";
 
 const idSchema = z.object({
   id: z.string().uuid(),
@@ -28,8 +28,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyApiAuth(request))) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  const auth = await requireApi(Permission.TEST_SUITES_MANAGE);
+  if ("error" in auth) {
+    return auth.error;
   }
 
   try {
@@ -68,8 +69,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyApiAuth(request))) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  const auth = await requireApi(Permission.TEST_SUITES_MANAGE);
+  if ("error" in auth) {
+    return auth.error;
   }
 
   try {

@@ -11,6 +11,7 @@ import type { NextRequest } from "next/server";
 import { GET, POST } from "../route";
 import { verifyApiAuth } from "@/lib/auth-helper";
 import { createTestSuites, listTestSuites } from "@/lib/services/test-suites";
+import { requireApi } from "@/lib/rbac";
 
 jest.mock("@/lib/auth-helper", () => ({
   verifyApiAuth: jest.fn(),
@@ -19,6 +20,13 @@ jest.mock("@/lib/auth-helper", () => ({
 jest.mock("@/lib/services/test-suites", () => ({
   listTestSuites: jest.fn(),
   createTestSuites: jest.fn(),
+}));
+
+jest.mock("@/lib/rbac", () => ({
+  Permission: {
+    TEST_SUITES_MANAGE: "MANAGE_TEST_SUITES",
+  },
+  requireApi: jest.fn(),
 }));
 
 function mockGetRequest(url: string): NextRequest {
@@ -81,33 +89,42 @@ describe("/api/test-suites route", () => {
   });
 
   it("returns 401 on POST when unauthorized", async () => {
-    (verifyApiAuth as jest.Mock).mockResolvedValue(false);
+    (requireApi as jest.Mock).mockResolvedValue({
+      error: { status: 401, json: async () => ({ message: "Unauthorized" }) },
+    });
 
     const res = await POST(mockJsonRequest({}));
     expect(res.status).toBe(401);
   });
 
-  it("returns 400 on POST with invalid payload", async () => {
-    (verifyApiAuth as jest.Mock).mockResolvedValue(true);
+  it("returns 403 on POST when missing permission", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({
+      error: { status: 403, json: async () => ({ message: "Forbidden" }) },
+    });
 
-    const res = await POST(mockJsonRequest({ testSuiteId: "x" }));
+    const res = await POST(mockJsonRequest({}));
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 on POST with invalid payload", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+
+    const res = await POST(mockJsonRequest({}));
     expect(res.status).toBe(400);
   });
 
-  it("returns 201 on POST and supports batch", async () => {
-    (verifyApiAuth as jest.Mock).mockResolvedValue(true);
-    (createTestSuites as jest.Mock).mockResolvedValue({ count: 2 });
+  it("returns 201 on POST and supports batch without SuiteID", async () => {
+    (requireApi as jest.Mock).mockResolvedValue({ user: { id: "user-1" } });
+    (createTestSuites as jest.Mock).mockResolvedValue({ count: 2, skipped: 1 });
 
     const res = await POST(
       mockJsonRequest([
         {
-          testSuiteId: "suite-a",
           specFile: "a.spec.ts",
           testId: "t-1",
           testCaseName: "case 1",
         },
         {
-          testSuiteId: "suite-b",
           specFile: "b.spec.ts",
           testId: "t-2",
           testCaseName: "case 2",
@@ -119,5 +136,6 @@ describe("/api/test-suites route", () => {
 
     expect(res.status).toBe(201);
     expect(body.count).toBe(2);
+    expect(body.skipped).toBe(1);
   });
 });

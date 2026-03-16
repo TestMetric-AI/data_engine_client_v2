@@ -2,8 +2,6 @@
 
 import { Prisma } from "@/generated/prisma/client";
 import prisma from "@/lib/db";
-import { unstable_cache } from "next/cache";
-import { CACHE_TAGS } from "@/lib/cache-tags";
 import type { TestSuitesFilter, TestSuitesResult, TestSuiteRow } from "./types";
 import { PAGE_SIZE } from "./types";
 
@@ -133,14 +131,6 @@ async function getTestSuitesRaw(filter: TestSuitesFilter): Promise<TestSuitesRes
 }
 
 export async function getTestSuites(filter: TestSuitesFilter): Promise<TestSuitesResult> {
-  const key = JSON.stringify(filter);
-  const cachedGetter = unstable_cache(
-    () => getTestSuitesRaw(filter),
-    ["test-suites", key],
-    {
-      revalidate: 300,
-      tags: [CACHE_TAGS.TEST_SUITES],
-    }
-  );
-  return cachedGetter();
+  return getTestSuitesRaw(filter);
 }
+

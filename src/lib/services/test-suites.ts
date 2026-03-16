@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
+import { randomUUID } from "crypto";
 
 export class TestSuiteNotFoundError extends Error {
   constructor(message = "TestSuite not found.") {
@@ -17,7 +18,6 @@ export type ListTestSuitesParams = {
 };
 
 export type TestSuiteCreatePayload = {
-  testSuiteId: string;
   specFile: string;
   testId: string;
   testCaseName: string;
@@ -25,6 +25,38 @@ export type TestSuiteCreatePayload = {
 };
 
 export type TestSuiteUpdatePayload = Partial<TestSuiteCreatePayload>;
+
+type NormalizedTestSuiteCreateInput = {
+  specFile: string;
+  testId: string;
+  testCaseName: string;
+  testCaseTags: string[];
+};
+
+function isRecoverableConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("connection terminated unexpectedly") ||
+    message.includes("can't reach database server") ||
+    message.includes("server has closed the connection")
+  );
+}
+
+async function withReconnectRetry<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isRecoverableConnectionError(error)) {
+      throw error;
+    }
+
+    await prisma.$disconnect().catch(() => undefined);
+    await prisma.$connect();
+    return operation();
+  }
+}
 
 function buildWhere(filters: ListTestSuitesParams): Prisma.TestSuiteWhereInput {
   const where: Prisma.TestSuiteWhereInput = {};
@@ -44,6 +76,14 @@ function buildWhere(filters: ListTestSuitesParams): Prisma.TestSuiteWhereInput {
   return where;
 }
 
+function buildDedupKey(row: {
+  specFile: string;
+  testId: string;
+  testCaseName: string;
+}): string {
+  return [row.specFile, row.testId, row.testCaseName].join("::");
+}
+
 export async function listTestSuites({
   page = 1,
   pageSize = 50,
@@ -55,13 +95,15 @@ export async function listTestSuites({
   const where = buildWhere({ testSuiteId, specFile, testId });
 
   const [data, total] = await Promise.all([
-    prisma.testSuite.findMany({
-      where,
-      orderBy: { testSuiteId: "asc" },
-      skip,
-      take: pageSize,
-    }),
-    prisma.testSuite.count({ where }),
+    withReconnectRetry(() =>
+      prisma.testSuite.findMany({
+        where,
+        orderBy: { testSuiteId: "asc" },
+        skip,
+        take: pageSize,
+      })
+    ),
+    withReconnectRetry(() => prisma.testSuite.count({ where })),
   ]);
 
   return {
@@ -75,15 +117,69 @@ export async function listTestSuites({
 
 export async function createTestSuites(
   payload: TestSuiteCreatePayload | TestSuiteCreatePayload[]
-) {
-  const rows = (Array.isArray(payload) ? payload : [payload]).map((item) => ({
+): Promise<{ count: number; skipped: number }> {
+  const inputRows: NormalizedTestSuiteCreateInput[] = (
+    Array.isArray(payload) ? payload : [payload]
+  ).map((item) => ({
     ...item,
     testCaseTags: item.testCaseTags ?? [],
   }));
 
-  return prisma.testSuite.createMany({
-    data: rows,
-  });
+  const totalInput = inputRows.length;
+  const uniqueRows: NormalizedTestSuiteCreateInput[] = [];
+  const payloadKeys = new Set<string>();
+
+  for (const row of inputRows) {
+    const key = buildDedupKey(row);
+    if (payloadKeys.has(key)) {
+      continue;
+    }
+
+    payloadKeys.add(key);
+    uniqueRows.push(row);
+  }
+
+  if (uniqueRows.length === 0) {
+    return { count: 0, skipped: totalInput };
+  }
+
+  const existingRows = await withReconnectRetry(() =>
+    prisma.testSuite.findMany({
+      where: {
+        OR: uniqueRows.map((row) => ({
+          specFile: row.specFile,
+          testId: row.testId,
+          testCaseName: row.testCaseName,
+        })),
+      },
+      select: {
+        specFile: true,
+        testId: true,
+        testCaseName: true,
+      },
+    })
+  );
+
+  const existingKeys = new Set(existingRows.map((row) => buildDedupKey(row)));
+  const rowsToInsert = uniqueRows.filter((row) => !existingKeys.has(buildDedupKey(row)));
+
+  if (rowsToInsert.length === 0) {
+    return { count: 0, skipped: totalInput };
+  }
+
+  const { count } = await withReconnectRetry(() =>
+    prisma.testSuite.createMany({
+      data: rowsToInsert.map((row) => ({
+        ...row,
+        testSuiteId: `suite-${randomUUID()}`,
+      })),
+    })
+  );
+
+  return {
+    count,
+    skipped: totalInput - count,
+  };
 }
 
 export async function updateTestSuiteById(id: string, data: TestSuiteUpdatePayload) {
