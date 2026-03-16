@@ -11,6 +11,7 @@ interface TestResultsTableProps {
   rows: TestResultRow[];
   total: number;
   totalPages: number;
+  matchedCount: number;
   currentPage: number;
   currentPageSize: number;
   projects: string[];
@@ -45,6 +46,7 @@ export default function TestResultsTable({
   rows,
   total,
   totalPages,
+  matchedCount,
   currentPage,
   currentPageSize,
   projects,
@@ -62,6 +64,7 @@ export default function TestResultsTable({
   const [project, setProject] = useState(searchParams.get("project") || "");
   const [branch, setBranch] = useState(searchParams.get("branch") || "");
   const [environment, setEnvironment] = useState(searchParams.get("environment") || "");
+  const [matchedOnly, setMatchedOnly] = useState(searchParams.get("matched") === "1" ? "1" : "");
   const [dateFrom, setDateFrom] = useState(searchParams.get("dateFrom") || "");
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
 
@@ -97,7 +100,7 @@ export default function TestResultsTable({
   }, [search]);
 
   function applyFilters() {
-    updateURL({ status, project, branch, environment, dateFrom, dateTo });
+    updateURL({ status, project, branch, environment, matched: matchedOnly, dateFrom, dateTo });
   }
 
   function clearFilters() {
@@ -106,13 +109,14 @@ export default function TestResultsTable({
     setProject("");
     setBranch("");
     setEnvironment("");
+    setMatchedOnly("");
     setDateFrom("");
     setDateTo("");
     router.push(pathname);
   }
 
-  const hasAnyFilter = status || project || branch || environment || dateFrom || dateTo;
-  const filterCount = [status, project, branch, environment, dateFrom, dateTo].filter(Boolean).length;
+  const hasAnyFilter = status || project || branch || environment || matchedOnly || dateFrom || dateTo;
+  const filterCount = [status, project, branch, environment, matchedOnly, dateFrom, dateTo].filter(Boolean).length;
 
   const canPrev = currentPage > 1;
   const canNext = currentPage < totalPages;
@@ -168,6 +172,17 @@ export default function TestResultsTable({
       options: [{ value: "", label: "All" }, ...environments.map((e) => ({ value: e, label: e }))],
     },
     {
+      key: "matched",
+      label: "Suite match",
+      type: "select",
+      value: matchedOnly,
+      onChange: setMatchedOnly,
+      options: [
+        { value: "", label: "All" },
+        { value: "1", label: "Matched only" },
+      ],
+    },
+    {
       key: "dateFrom",
       label: "Date from",
       type: "date",
@@ -188,6 +203,7 @@ export default function TestResultsTable({
     project ? `Project: ${project}` : null,
     branch ? `Branch: ${branch}` : null,
     environment ? `Environment: ${environment}` : null,
+    matchedOnly ? "Suite match: Matched only" : null,
     dateFrom || dateTo ? `Date: ${dateFrom || "Any"} to ${dateTo || "Any"}` : null,
   ].filter(Boolean) as string[];
 
@@ -241,7 +257,7 @@ export default function TestResultsTable({
             <p className="mt-2 text-sm text-text-secondary">
               Browse and filter individual test results from CI/CD pipelines.
             </p>
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Total</p>
                 <p className="mt-1 text-sm font-semibold text-text-primary">{total.toLocaleString()}</p>
@@ -249,6 +265,10 @@ export default function TestResultsTable({
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Showing</p>
                 <p className="mt-1 text-sm font-semibold text-text-primary">{rows.length.toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Matched</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">{matchedCount.toLocaleString()}</p>
               </div>
               <div className="rounded-xl border border-border bg-surface/70 px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">Current page</p>
@@ -573,4 +593,8 @@ export default function TestResultsTable({
     </div>
   );
 }
+
+
+
+
 

@@ -3,6 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
+import { createTestSuiteMatcher } from "@/lib/services/test-result-suite-matcher";
 
 export type DashboardFilters = {
     testProject?: string;
@@ -48,6 +49,13 @@ export type ProjectBreakdown = {
     passRate: number;
 };
 
+export type SuiteMatchDistribution = {
+    matched: number;
+    unmatched: number;
+    total: number;
+    matchRate: number;
+};
+
 export type TestResultsDashboardData = {
     totalTests: number;
     passRate: number;
@@ -59,6 +67,7 @@ export type TestResultsDashboardData = {
     flakyTests: FlakyTest[];
     projectBreakdown: ProjectBreakdown[];
     recentBranches: { branch: string; total: number; passed: number; failed: number }[];
+    suiteMatchDistribution: SuiteMatchDistribution;
 };
 
 async function getDashboardFilterOptionsRaw() {
@@ -82,7 +91,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Build Prisma where clause with optional filters
     const baseWhere: Prisma.TestResultWhereInput = {
         createdAt: { gte: thirtyDaysAgo },
         ...(filters?.testProject && { testProject: filters.testProject }),
@@ -90,14 +98,12 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         ...(filters?.environment && { environment: filters.environment }),
     };
 
-    // Build raw SQL WHERE clause with optional filters
     const conditions = [Prisma.sql`created_at >= ${thirtyDaysAgo}`];
     if (filters?.testProject) conditions.push(Prisma.sql`test_project = ${filters.testProject}`);
     if (filters?.pipelineId) conditions.push(Prisma.sql`pipeline_id = ${filters.pipelineId}`);
     if (filters?.environment) conditions.push(Prisma.sql`environment = ${filters.environment}`);
     const whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 
-    // Run all queries in parallel
     const [
         totalTests,
         totalFailures,
@@ -108,31 +114,13 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         flakyResults,
         projectResults,
         branchResults,
+        matchSeedRows,
+        suiteRows,
     ] = await Promise.all([
-        // Total tests in last 30 days
-        prisma.testResult.count({
-            where: baseWhere,
-        }),
-
-        // Total failures
-        prisma.testResult.count({
-            where: { ...baseWhere, testStatus: "failed" },
-        }),
-
-        // Average duration
-        prisma.testResult.aggregate({
-            _avg: { duration: true },
-            where: baseWhere,
-        }),
-
-        // Status distribution
-        prisma.testResult.groupBy({
-            by: ["testStatus"],
-            _count: { id: true },
-            where: baseWhere,
-        }),
-
-        // Daily trend (raw query for date grouping)
+        prisma.testResult.count({ where: baseWhere }),
+        prisma.testResult.count({ where: { ...baseWhere, testStatus: "failed" } }),
+        prisma.testResult.aggregate({ _avg: { duration: true }, where: baseWhere }),
+        prisma.testResult.groupBy({ by: ["testStatus"], _count: { id: true }, where: baseWhere }),
         prisma.$queryRaw<
             { date: Date; status: string; count: bigint }[]
         >`
@@ -142,8 +130,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             GROUP BY DATE(created_at), test_status
             ORDER BY date ASC
         `,
-
-        // Slowest tests (top 10 by avg duration)
         prisma.$queryRaw<
             { test_title: string; test_file: string; avg_duration: number; max_duration: number; run_count: bigint }[]
         >`
@@ -158,8 +144,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             ORDER BY avg_duration DESC
             LIMIT 10
         `,
-
-        // Flaky tests (tests with both pass and fail in the period)
         prisma.$queryRaw<
             { test_title: string; test_file: string; total_runs: bigint; pass_count: bigint; fail_count: bigint }[]
         >`
@@ -175,8 +159,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             ORDER BY COUNT(*) FILTER (WHERE test_status = 'failed')::float / COUNT(*) DESC
             LIMIT 10
         `,
-
-        // Project breakdown
         prisma.$queryRaw<
             { project: string; total: bigint; passed: bigint; failed: bigint }[]
         >`
@@ -190,8 +172,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             ORDER BY total DESC
             LIMIT 10
         `,
-
-        // Recent branches
         prisma.$queryRaw<
             { branch: string; total: bigint; passed: bigint; failed: bigint }[]
         >`
@@ -205,15 +185,42 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
             ORDER BY MAX(created_at) DESC
             LIMIT 8
         `,
+        prisma.testResult.findMany({
+            where: baseWhere,
+            select: {
+                testTitle: true,
+                testFile: true,
+            },
+        }),
+        prisma.testSuite.findMany({
+            select: {
+                id: true,
+                testSuiteId: true,
+                specFile: true,
+                testId: true,
+                testCaseName: true,
+            },
+        }),
     ]);
 
-    // Process status distribution
+    const matchSuite = createTestSuiteMatcher(suiteRows);
+    const matched = matchSeedRows.reduce((acc, row) => {
+        return matchSuite({ testTitle: row.testTitle, testFile: row.testFile }) ? acc + 1 : acc;
+    }, 0);
+    const unmatched = Math.max(matchSeedRows.length - matched, 0);
+
+    const suiteMatchDistribution: SuiteMatchDistribution = {
+        matched,
+        unmatched,
+        total: matchSeedRows.length,
+        matchRate: matchSeedRows.length > 0 ? Math.round((matched / matchSeedRows.length) * 100) : 0,
+    };
+
     const statusDistribution: StatusDistribution[] = statusCounts.map((s) => ({
         status: s.testStatus,
         count: s._count.id,
     }));
 
-    // Process daily trend
     const dailyMap = new Map<string, DailyTrend>();
     for (const row of dailyResults) {
         const dateStr = new Date(row.date).toISOString().split("T")[0];
@@ -229,7 +236,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
     }
     const dailyTrend = Array.from(dailyMap.values());
 
-    // Process slowest tests
     const slowestTests: SlowestTest[] = slowestResults.map((r) => ({
         testTitle: r.test_title,
         testFile: r.test_file,
@@ -238,7 +244,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         runCount: Number(r.run_count),
     }));
 
-    // Process flaky tests
     const flakyTests: FlakyTest[] = flakyResults.map((r) => {
         const total = Number(r.total_runs);
         const fails = Number(r.fail_count);
@@ -252,7 +257,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         };
     });
 
-    // Process project breakdown
     const projectBreakdown: ProjectBreakdown[] = projectResults.map((r) => {
         const total = Number(r.total);
         const passed = Number(r.passed);
@@ -265,7 +269,6 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         };
     });
 
-    // Process branches
     const recentBranches = branchResults.map((r) => ({
         branch: r.branch,
         total: Number(r.total),
@@ -286,6 +289,7 @@ async function getTestResultsDashboardDataRaw(filters?: DashboardFilters): Promi
         flakyTests,
         projectBreakdown,
         recentBranches,
+        suiteMatchDistribution,
     };
 }
 

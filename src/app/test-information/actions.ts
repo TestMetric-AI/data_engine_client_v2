@@ -9,6 +9,64 @@ import { PAGE_SIZE } from "./types";
 import { cleanupExpiredTestResults } from "@/lib/services/test-results-retention";
 import { createTestSuiteMatcher } from "@/lib/services/test-result-suite-matcher";
 
+type TestResultMatchSeed = {
+  testTitle: string;
+  testFile: string;
+};
+
+type TestResultSelectedRow = {
+  id: string;
+  testTitle: string;
+  testStatus: string;
+  duration: number;
+  testFile: string;
+  testProject: string | null;
+  retries: number;
+  retry: number;
+  tags: string[];
+  environment: string | null;
+  pipelineId: string | null;
+  commitSha: string | null;
+  branch: string | null;
+  runUrl: string | null;
+  provider: string | null;
+  createdAt: Date;
+};
+
+type TestSuiteRow = {
+  id: string;
+  testSuiteId: string;
+  specFile: string;
+  testId: string;
+  testCaseName: string;
+};
+
+function countMatches(rows: TestResultMatchSeed[], suites: TestSuiteRow[]): number {
+  const matchSuite = createTestSuiteMatcher(suites);
+
+  return rows.reduce((acc, row) => {
+    return matchSuite({ testTitle: row.testTitle, testFile: row.testFile }) ? acc + 1 : acc;
+  }, 0);
+}
+
+function enrichRowsWithMatch(rows: TestResultSelectedRow[], suites: TestSuiteRow[]): TestResultRow[] {
+  const matchSuite = createTestSuiteMatcher(suites);
+
+  return rows.map((r) => {
+    const match = matchSuite({ testTitle: r.testTitle, testFile: r.testFile });
+
+    return {
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      matched: Boolean(match),
+      matchedBy: match?.matchedBy ?? null,
+      matchedSuiteId: match?.suite.testSuiteId ?? null,
+      matchedSuiteTestId: match?.suite.testId ?? null,
+      matchedSuiteCaseName: match?.suite.testCaseName ?? null,
+    };
+  });
+}
+
 async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResultsResult> {
   await cleanupExpiredTestResults();
 
@@ -51,32 +109,7 @@ async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResults
     }
   }
 
-  const [results, total, projectValues, branchValues, environmentValues, suiteRows] = await Promise.all([
-    prisma.testResult.findMany({
-      where,
-      select: {
-        id: true,
-        testTitle: true,
-        testStatus: true,
-        duration: true,
-        testFile: true,
-        testProject: true,
-        retries: true,
-        retry: true,
-        tags: true,
-        environment: true,
-        pipelineId: true,
-        commitSha: true,
-        branch: true,
-        runUrl: true,
-        provider: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: pageSize,
-    }),
-    prisma.testResult.count({ where }),
+  const [projectValues, branchValues, environmentValues, suiteRows] = await Promise.all([
     prisma.testResult.findMany({
       select: { testProject: true },
       distinct: ["testProject"],
@@ -103,26 +136,88 @@ async function getTestResultsRaw(filter: TestResultsFilter): Promise<TestResults
     }),
   ]);
 
-  const matchSuite = createTestSuiteMatcher(suiteRows);
+  if (filter.matchedOnly) {
+    const allResults = await prisma.testResult.findMany({
+      where,
+      select: {
+        id: true,
+        testTitle: true,
+        testStatus: true,
+        duration: true,
+        testFile: true,
+        testProject: true,
+        retries: true,
+        retry: true,
+        tags: true,
+        environment: true,
+        pipelineId: true,
+        commitSha: true,
+        branch: true,
+        runUrl: true,
+        provider: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-  const rows: TestResultRow[] = results.map((r) => {
-    const match = matchSuite({ testTitle: r.testTitle, testFile: r.testFile });
+    const enriched = enrichRowsWithMatch(allResults, suiteRows);
+    const matchedOnlyRows = enriched.filter((r) => r.matched);
+    const total = matchedOnlyRows.length;
 
     return {
-      ...r,
-      createdAt: r.createdAt.toISOString(),
-      matched: Boolean(match),
-      matchedBy: match?.matchedBy ?? null,
-      matchedSuiteId: match?.suite.testSuiteId ?? null,
-      matchedSuiteTestId: match?.suite.testId ?? null,
-      matchedSuiteCaseName: match?.suite.testCaseName ?? null,
+      rows: matchedOnlyRows.slice(skip, skip + pageSize),
+      total,
+      totalPages: Math.ceil(total / pageSize),
+      matchedCount: total,
+      projects: projectValues.map((p) => p.testProject!).filter(Boolean).sort(),
+      branches: branchValues.map((b) => b.branch!).filter(Boolean).sort(),
+      environments: environmentValues.map((e) => e.environment!).filter(Boolean).sort(),
     };
-  });
+  }
+
+  const [results, total, matchCountRows] = await Promise.all([
+    prisma.testResult.findMany({
+      where,
+      select: {
+        id: true,
+        testTitle: true,
+        testStatus: true,
+        duration: true,
+        testFile: true,
+        testProject: true,
+        retries: true,
+        retry: true,
+        tags: true,
+        environment: true,
+        pipelineId: true,
+        commitSha: true,
+        branch: true,
+        runUrl: true,
+        provider: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.testResult.count({ where }),
+    prisma.testResult.findMany({
+      where,
+      select: {
+        testTitle: true,
+        testFile: true,
+      },
+    }),
+  ]);
+
+  const rows = enrichRowsWithMatch(results, suiteRows);
+  const matchedCount = countMatches(matchCountRows, suiteRows);
 
   return {
     rows,
     total,
     totalPages: Math.ceil(total / pageSize),
+    matchedCount,
     projects: projectValues.map((p) => p.testProject!).filter(Boolean).sort(),
     branches: branchValues.map((b) => b.branch!).filter(Boolean).sort(),
     environments: environmentValues.map((e) => e.environment!).filter(Boolean).sort(),

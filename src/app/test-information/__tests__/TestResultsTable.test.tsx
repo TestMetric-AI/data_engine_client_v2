@@ -19,6 +19,7 @@ describe("TestResultsTable", () => {
     rows: [] as TestResultRow[],
     total: 0,
     totalPages: 0,
+    matchedCount: 0,
     currentPage: 1,
     currentPageSize: 10,
     projects: ["Project A", "Project B"],
@@ -63,13 +64,13 @@ describe("TestResultsTable", () => {
   });
 
   it("renders table with data", () => {
-    render(<TestResultsTable {...defaultProps} rows={[sampleRow]} total={1} totalPages={1} />);
+    render(<TestResultsTable {...defaultProps} rows={[sampleRow]} total={1} totalPages={1} matchedCount={1} />);
 
     expect(screen.getByText("Sample Test")).toBeInTheDocument();
     expect(screen.getByText("Passed")).toBeInTheDocument();
     expect(screen.getByText("1.2s")).toBeInTheDocument();
     expect(screen.getByText("Project A")).toBeInTheDocument();
-    expect(screen.getByText("Matched")).toBeInTheDocument();
+    expect(screen.getAllByText("Matched").length).toBeGreaterThan(0);
     expect(screen.getByText(/TC-123 - Sample Test/i)).toBeInTheDocument();
   });
 
@@ -94,8 +95,21 @@ describe("TestResultsTable", () => {
     expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("project=Project+A"));
   });
 
+  it("updates URL on matched-only filter", () => {
+    render(<TestResultsTable {...defaultProps} />);
+
+    fireEvent.click(screen.getByText("Show filters"));
+
+    const matchedSelect = screen.getByLabelText(/Suite match/i);
+    fireEvent.change(matchedSelect, { target: { value: "1" } });
+
+    fireEvent.click(screen.getByText("Apply filters"));
+
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("matched=1"));
+  });
+
   it("updates URL on pagination change", () => {
-    render(<TestResultsTable {...defaultProps} total={20} totalPages={2} />);
+    render(<TestResultsTable {...defaultProps} total={20} totalPages={2} matchedCount={5} />);
 
     const nextButtons = screen.getAllByText("Next");
     fireEvent.click(nextButtons[0]);
@@ -131,3 +145,4 @@ describe("TestResultsTable", () => {
     expect(mockPush).toHaveBeenCalledWith("/test-information");
   });
 });
+

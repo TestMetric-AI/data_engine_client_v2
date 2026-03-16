@@ -12,6 +12,7 @@ interface TestInformationPageProps {
     project?: string;
     branch?: string;
     environment?: string;
+    matched?: string;
     dateFrom?: string;
     dateTo?: string;
     page?: string;
@@ -30,6 +31,7 @@ export default async function TestInformationPage({ searchParams }: TestInformat
     project: params.project,
     branch: params.branch,
     environment: params.environment,
+    matchedOnly: params.matched === "1",
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
     page,
@@ -50,6 +52,7 @@ export default async function TestInformationPage({ searchParams }: TestInformat
         rows={data.rows}
         total={data.total}
         totalPages={data.totalPages}
+        matchedCount={data.matchedCount}
         currentPage={page}
         currentPageSize={pageSize}
         projects={data.projects}

@@ -35,13 +35,17 @@ type FilterOptions = {
     environments: string[];
 };
 
-// --- Color palette ---
 const STATUS_COLORS: Record<string, string> = {
     passed: "#10b981",
     failed: "#ef4444",
     timedOut: "#f59e0b",
     skipped: "#6b7280",
     interrupted: "#8b5cf6",
+};
+
+const MATCH_COLORS = {
+    matched: "#10b981",
+    unmatched: "#ef4444",
 };
 
 function formatDuration(ms: number): string {
@@ -62,7 +66,6 @@ function shortenPath(path: string, maxLen = 40): string {
     return `.../${parts.slice(-2).join("/")}`;
 }
 
-// --- Summary Stat Cards ---
 function SummaryStats({
     totalTests,
     passRate,
@@ -84,8 +87,8 @@ function SummaryStats({
                 passRate >= 80
                     ? "linear-gradient(135deg, #d1fae5, #a7f3d0)"
                     : passRate >= 60
-                      ? "linear-gradient(135deg, #fef3c7, #fde68a)"
-                      : "linear-gradient(135deg, #fee2e2, #fecaca)",
+                        ? "linear-gradient(135deg, #fef3c7, #fde68a)"
+                        : "linear-gradient(135deg, #fee2e2, #fecaca)",
         },
         {
             label: "Avg Duration",
@@ -122,7 +125,6 @@ function SummaryStats({
     );
 }
 
-// --- Status Donut ---
 function StatusDonut({ data }: { data: StatusDistribution[] }) {
     const total = data.reduce((sum, d) => sum + d.count, 0);
 
@@ -179,7 +181,73 @@ function StatusDonut({ data }: { data: StatusDistribution[] }) {
     );
 }
 
-// --- Daily Trend Area Chart ---
+function SuiteMatchDonut({ data }: { data: TestResultsDashboardData["suiteMatchDistribution"] }) {
+    const pieData = [
+        { name: "Matched", count: data.matched, color: MATCH_COLORS.matched },
+        { name: "No match", count: data.unmatched, color: MATCH_COLORS.unmatched },
+    ];
+
+    return (
+        <Card>
+            <p className="font-display text-lg font-semibold text-text-primary">Suite Match Coverage</p>
+            <p className="mb-4 text-sm text-text-secondary">Match vs TestSuite cases (last 30 days)</p>
+            {data.total === 0 ? (
+                <p className="py-8 text-center text-sm text-text-secondary">No test runs in current filter window.</p>
+            ) : (
+                <div className="flex flex-col items-center gap-4 lg:flex-row lg:justify-around">
+                    <ResponsiveContainer width={200} height={200}>
+                        <PieChart>
+                            <Pie
+                                data={pieData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={55}
+                                outerRadius={85}
+                                dataKey="count"
+                                nameKey="name"
+                                strokeWidth={2}
+                                stroke="var(--card)"
+                            >
+                                {pieData.map((entry) => (
+                                    <Cell key={entry.name} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                formatter={(value: number | undefined, name: string | undefined) => [
+                                    `${value ?? 0} (${data.total > 0 ? Math.round(((value ?? 0) / data.total) * 100) : 0}%)`,
+                                    name ?? "",
+                                ]}
+                                contentStyle={{
+                                    background: "var(--card)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "12px",
+                                    fontSize: "13px",
+                                }}
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex flex-col gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full" style={{ background: MATCH_COLORS.matched }} />
+                            <span className="text-text-secondary">Matched</span>
+                            <span className="ml-auto font-semibold text-text-primary">{data.matched}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full" style={{ background: MATCH_COLORS.unmatched }} />
+                            <span className="text-text-secondary">No match</span>
+                            <span className="ml-auto font-semibold text-text-primary">{data.unmatched}</span>
+                        </div>
+                        <div className="mt-2 rounded-lg border border-border bg-surface/40 px-3 py-2">
+                            <p className="text-xs text-text-secondary">Match rate</p>
+                            <p className="font-display text-lg font-semibold text-text-primary">{data.matchRate}%</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </Card>
+    );
+}
+
 function DailyTrendChart({ data }: { data: DailyTrend[] }) {
     return (
         <Card className="col-span-1 lg:col-span-2">
@@ -222,7 +290,6 @@ function DailyTrendChart({ data }: { data: DailyTrend[] }) {
     );
 }
 
-// --- Slowest Tests Bar Chart ---
 function SlowestTestsChart({ data }: { data: SlowestTest[] }) {
     const chartData = data.map((t) => ({
         name: t.testTitle.length > 30 ? t.testTitle.slice(0, 30) + "..." : t.testTitle,
@@ -276,7 +343,6 @@ function SlowestTestsChart({ data }: { data: SlowestTest[] }) {
     );
 }
 
-// --- Flaky Tests Table ---
 function FlakyTestsTable({ data }: { data: FlakyTest[] }) {
     return (
         <Card>
@@ -314,8 +380,8 @@ function FlakyTestsTable({ data }: { data: FlakyTest[] }) {
                                                 t.flakyRate >= 50
                                                     ? "bg-rose-100 text-rose-700"
                                                     : t.flakyRate >= 25
-                                                      ? "bg-amber-100 text-amber-700"
-                                                      : "bg-yellow-50 text-yellow-700"
+                                                        ? "bg-amber-100 text-amber-700"
+                                                        : "bg-yellow-50 text-yellow-700"
                                             }`}
                                         >
                                             {t.flakyRate}%
@@ -331,7 +397,6 @@ function FlakyTestsTable({ data }: { data: FlakyTest[] }) {
     );
 }
 
-// --- Project Breakdown Chart ---
 function ProjectBreakdownChart({ data }: { data: ProjectBreakdown[] }) {
     return (
         <Card>
@@ -379,7 +444,6 @@ function ProjectBreakdownChart({ data }: { data: ProjectBreakdown[] }) {
     );
 }
 
-// --- Branch Health ---
 function BranchHealth({ data }: { data: TestResultsDashboardData["recentBranches"] }) {
     const chartData = data.map((b) => ({
         branch: b.branch.length > 20 ? b.branch.slice(0, 20) + "..." : b.branch,
@@ -422,7 +486,6 @@ function BranchHealth({ data }: { data: TestResultsDashboardData["recentBranches
     );
 }
 
-// --- Filter Bar ---
 function FilterBar({
     filterOptions,
     currentFilters,
@@ -500,7 +563,6 @@ function FilterBar({
     );
 }
 
-// --- Main Export ---
 export default function TestResultsCharts({
     data,
     filterOptions,
@@ -538,10 +600,8 @@ export default function TestResultsCharts({
         <div className="mt-10">
             <h2 className="mb-6 font-display text-xl font-semibold text-text-primary">Test Results</h2>
 
-            {/* Filter bar */}
             <FilterBar filterOptions={filterOptions} currentFilters={currentFilters} />
 
-            {/* Summary stats */}
             <SummaryStats
                 totalTests={data.totalTests}
                 passRate={data.passRate}
@@ -549,31 +609,23 @@ export default function TestResultsCharts({
                 totalFailures={data.totalFailures}
             />
 
-            {/* Charts grid */}
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                {/* Status donut - 1 col */}
                 <StatusDonut data={data.statusDistribution} />
-
-                {/* Daily trend - 2 cols */}
                 <DailyTrendChart data={data.dailyTrend} />
             </div>
 
-            {/* Second row */}
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                {/* Project breakdown - 1 col */}
-                <ProjectBreakdownChart data={data.projectBreakdown} />
-
-                {/* Slowest tests - 2 cols */}
+                <SuiteMatchDonut data={data.suiteMatchDistribution} />
                 <SlowestTestsChart data={data.slowestTests} />
             </div>
 
-            {/* Third row */}
             <div className="mt-6 grid gap-6 lg:grid-cols-3">
-                {/* Flaky tests - 1 col */}
                 <FlakyTestsTable data={data.flakyTests} />
-
-                {/* Branch health - 2 cols */}
                 <BranchHealth data={data.recentBranches} />
+            </div>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-3">
+                <ProjectBreakdownChart data={data.projectBreakdown} />
             </div>
         </div>
     );
