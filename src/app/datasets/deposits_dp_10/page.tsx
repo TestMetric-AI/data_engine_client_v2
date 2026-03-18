@@ -382,70 +382,6 @@ export default function DepositsDatasetPage() {
           <div className="text-sm text-text-secondary">
             Mostrando {filteredRows.length} de {pagination.total} registros.
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span>Page size</span>
-              <select
-                value={pagination.pageSize}
-                onChange={(event) =>
-                  setPagination((prev) => ({
-                    ...prev,
-                    page: 1,
-                    pageSize: Number(event.target.value),
-                  }))
-                }
-                className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
-              >
-                {pageSizes.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span>
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={!canPrev}
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                }
-                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <div className="flex items-center gap-1">
-                {visiblePages.map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() =>
-                      setPagination((prev) => ({ ...prev, page }))
-                    }
-                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${page === pagination.page
-                      ? "bg-primary text-white"
-                      : "border border-border bg-card text-text-secondary"
-                      }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={!canNext}
-                onClick={() =>
-                  setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                }
-                className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
@@ -509,10 +445,32 @@ export default function DepositsDatasetPage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
-          <span>
-            Page {pagination.page} of {pagination.totalPages} (total{" "}
-            {pagination.total})
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <span>Page size</span>
+              <select
+                value={pagination.pageSize}
+                onChange={(event) =>
+                  setPagination((prev) => ({
+                    ...prev,
+                    page: 1,
+                    pageSize: Number(event.target.value),
+                  }))
+                }
+                className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+              >
+                {pageSizes.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span>
+              Page {pagination.page} of {pagination.totalPages} (total{" "}
+              {pagination.total})
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               type="button"

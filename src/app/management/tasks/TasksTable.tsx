@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { MagnifyingGlassIcon, FunnelIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
-import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
+import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon, CheckCircleIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
+import { ResourceTask, ResourceTaskStatus, Project } from "@/generated/prisma/client";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "./TaskForm";
 import { deleteTaskAction } from "./taskActions";
 import TaskDailiesModal from "./TaskDailiesModal";
-import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 // import { getResourceTasksAction } from "@/app/management/resource-roles/actions";
 // I haven't exposed `getResourceTasksAction` in `tasks/actions.ts` yet properly for generic use?
 // `tasks/actions.ts` has create/update/delete. I need a getter there or use the service directly in page.
@@ -20,24 +19,45 @@ import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-type TaskWithRelations = ResourceTask & {
+export type TaskWithRelations = ResourceTask & {
     status: ResourceTaskStatus;
     project: { name: string; id: string } | null;
     resource: { fullName: string; id: string } | null;
     approvalStatus?: "PENDING" | "APPROVED" | "REJECTED"; // Optional if types not yet generated
 };
 
+type TaskTableResourceFilter = {
+    id: string;
+    fullName: string | null;
+};
+
 interface TasksTableProps {
     tasks: TaskWithRelations[];
     total: number;
+    currentPage: number;
+    currentPageSize: number;
+    totalPages: number;
     statuses: ResourceTaskStatus[];
     projects: Project[];
-    resources: Resource[]; // For filter dropdown
+    resources: TaskTableResourceFilter[]; // For filter dropdown
     canApprove?: boolean;
     currentResourceId?: string | null;
 }
 
-export default function TasksTable({ tasks, total, statuses, projects, resources, canApprove = false, currentResourceId = null }: TasksTableProps) {
+const pageSizes = [10, 25, 50, 100];
+
+export default function TasksTable({
+    tasks,
+    total,
+    currentPage,
+    currentPageSize,
+    totalPages,
+    statuses,
+    projects,
+    resources,
+    canApprove = false,
+    currentResourceId = null,
+}: TasksTableProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -49,24 +69,24 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
     const [resourceId, setResourceId] = useState(searchParams.get("resourceId") || "");
 
     // Debounce search
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            updateFilters({ search });
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
-
-    function updateFilters(updates: any) {
+    const updateFilters = useCallback((updates: Record<string, string>) => {
         const params = new URLSearchParams(searchParams.toString());
         Object.entries(updates).forEach(([key, value]) => {
             if (value) {
-                params.set(key, value as string);
+                params.set(key, value);
             } else {
                 params.delete(key);
             }
         });
         router.push(`${pathname}?${params.toString()}`);
-    }
+    }, [pathname, router, searchParams]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            updateFilters({ search, page: "1" });
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search, updateFilters]);
 
     // Edit Modal State
     const [editingTask, setEditingTask] = useState<TaskWithRelations | null>(null);
@@ -132,6 +152,18 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
         }
     }
 
+    const canPrev = currentPage > 1;
+    const canNext = currentPage < totalPages;
+    const visiblePages = useMemo(() => {
+        const pages: number[] = [];
+        const start = Math.max(1, currentPage - 2);
+        const end = Math.min(totalPages, currentPage + 2);
+        for (let i = start; i <= end; i += 1) {
+            pages.push(i);
+        }
+        return pages;
+    }, [currentPage, totalPages]);
+
     return (
         <section className="w-full min-w-0 rounded-2xl border border-border bg-card p-6 shadow-sm">
             {/* Header & Filters */}
@@ -162,7 +194,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                             value={statusId}
                             onChange={(e) => {
                                 setStatusId(e.target.value);
-                                updateFilters({ statusId: e.target.value });
+                                updateFilters({ statusId: e.target.value, page: "1" });
                             }}
                             className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none"
                         >
@@ -176,7 +208,7 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                             value={projectId}
                             onChange={(e) => {
                                 setProjectId(e.target.value);
-                                updateFilters({ projectId: e.target.value });
+                                updateFilters({ projectId: e.target.value, page: "1" });
                             }}
                             className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none"
                         >
@@ -190,13 +222,12 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                             value={resourceId}
                             onChange={(e) => {
                                 setResourceId(e.target.value);
-                                updateFilters({ resourceId: e.target.value });
+                                updateFilters({ resourceId: e.target.value, page: "1" });
                             }}
                             className="rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none w-32 sm:w-auto"
                         >
                             <option value="">All Resources</option>
                             {resources.map((r) => (
-                                // @ts-ignore
                                 <option key={r.id} value={r.id}>{r.fullName || r.id}</option>
                             ))}
                         </select>
@@ -204,10 +235,16 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                 </div>
             </div>
 
+            <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-text-secondary">
+                    Mostrando {tasks.length} de {total} tareas.
+                </div>
+            </div>
+
             {/* Table */}
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
                 <table className="min-w-full border-collapse text-left text-sm">
-                    <thead className="border-b border-border bg-surface text-xs uppercase text-text-secondary">
+                    <thead className="sticky top-0 z-10 border-b border-border bg-card text-xs uppercase text-text-secondary">
                         <tr>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Title</th>
                             <th className="whitespace-nowrap px-4 py-3 font-medium">Assigned To</th>
@@ -226,7 +263,6 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                                     {task.title}
                                 </td>
                                 <td className="px-4 py-3 text-text-secondary">
-                                    {/* @ts-ignore */}
                                     {task.resource?.fullName || "Unassigned"}
                                 </td>
                                 <td className="px-4 py-3">
@@ -324,6 +360,61 @@ export default function TasksTable({ tasks, total, statuses, projects, resources
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>Page size</span>
+                        <select
+                            value={currentPageSize}
+                            onChange={(event) => {
+                                updateFilters({ pageSize: String(Number(event.target.value)), page: "1" });
+                            }}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+                        >
+                            {pageSizes.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <span>
+                        Page {currentPage} of {totalPages} (total {total})
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        disabled={!canPrev}
+                        onClick={() => updateFilters({ page: String(currentPage - 1) })}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Prev
+                    </button>
+                    {visiblePages.map((visiblePage) => (
+                        <button
+                            key={`bottom-${visiblePage}`}
+                            type="button"
+                            onClick={() => updateFilters({ page: String(visiblePage) })}
+                            className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
+                                ? "bg-primary text-white"
+                                : "border border-border bg-card text-text-secondary"
+                                }`}
+                        >
+                            {visiblePage}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        disabled={!canNext}
+                        onClick={() => updateFilters({ page: String(currentPage + 1) })}
+                        className="rounded-lg border border-border bg-card px-3 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
 
             {/* Edit Modal */}

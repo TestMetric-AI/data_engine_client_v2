@@ -14,11 +14,17 @@ interface TasksPageProps {
         statusId?: string;
         projectId?: string;
         resourceId?: string;
+        page?: string;
+        pageSize?: string;
     }>;
 }
 
 export default async function TasksPage({ searchParams }: TasksPageProps) {
-    const { search, statusId, projectId, resourceId } = await searchParams;
+    const { search, statusId, projectId, resourceId, page, pageSize } = await searchParams;
+    const parsedPage = Number.parseInt(page ?? "1", 10);
+    const parsedPageSize = Number.parseInt(pageSize ?? "10", 10);
+    const currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const currentPageSize = Number.isFinite(parsedPageSize) && parsedPageSize > 0 ? parsedPageSize : 10;
 
     const [tasksData, statuses, projectsData, resourcesData, userContext] = await Promise.all([
         getResourceTasks({
@@ -26,7 +32,8 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
             statusId,
             projectId,
             resourceId,
-            pageSize: 50
+            page: currentPage,
+            pageSize: currentPageSize,
         }),
         getResourceTaskStatuses(),
         getProjects({}),
@@ -67,19 +74,23 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
     ]);
 
     const { canApprove, canManageTaskStatuses, currentResourceId, currentUserRole } = userContext;
+    const mappedTasks = tasksData.tasks.map((t) => ({
+        ...t,
+        estimatedHours: t.estimatedHours ? Number(t.estimatedHours) : null,
+        actualHours: t.actualHours ? Number(t.actualHours) : null,
+    }));
 
     return (
         <Suspense fallback={<div>Loading tasks...</div>}>
             <TasksClientPage
-                tasks={tasksData.tasks.map((t: any) => ({
-                    ...t,
-                    estimatedHours: t.estimatedHours ? Number(t.estimatedHours) : null,
-                    actualHours: t.actualHours ? Number(t.actualHours) : null,
-                }))}
+                tasks={mappedTasks}
                 total={tasksData.total}
                 statuses={statuses}
                 projects={projectsData.projects}
-                resources={resourcesData.resources as any}
+                resources={resourcesData.resources}
+                currentPage={currentPage}
+                currentPageSize={currentPageSize}
+                totalPages={tasksData.totalPages}
                 canApprove={Boolean(canApprove)}
                 canManageTaskStatuses={Boolean(canManageTaskStatuses)}
                 currentResourceId={currentResourceId}
