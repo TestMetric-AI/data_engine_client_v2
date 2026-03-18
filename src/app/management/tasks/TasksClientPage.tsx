@@ -28,10 +28,6 @@ export default function TasksClientPage({ tasks, total, currentPage, currentPage
 
     // Create Task Modal State
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const tableResourceFilters = resources.map((resource) => ({
-        id: resource.id,
-        fullName: resource.fullName,
-    }));
 
     return (
         <div className="flex flex-col gap-6">
@@ -101,7 +97,7 @@ export default function TasksClientPage({ tasks, total, currentPage, currentPage
                         totalPages={totalPages}
                         statuses={statuses}
                         projects={projects}
-                        resources={tableResourceFilters}
+                        resources={resources}
                         canApprove={canApprove}
                         currentResourceId={currentResourceId}
                     />

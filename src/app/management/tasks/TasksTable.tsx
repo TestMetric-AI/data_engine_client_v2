@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon, CheckCircleIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
-import { ResourceTask, ResourceTaskStatus, Project } from "@/generated/prisma/client";
+import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
 import Modal from "@/components/ui/Modal";
 import TaskForm from "./TaskForm";
 import { deleteTaskAction } from "./taskActions";
@@ -19,16 +19,16 @@ import TaskDailiesModal from "./TaskDailiesModal";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
-export type TaskWithRelations = ResourceTask & {
+type TaskBase = Omit<ResourceTask, "estimatedHours" | "actualHours"> & {
+    estimatedHours: number | null;
+    actualHours: number | null;
+};
+
+export type TaskWithRelations = TaskBase & {
     status: ResourceTaskStatus;
     project: { name: string; id: string } | null;
     resource: { fullName: string; id: string } | null;
     approvalStatus?: "PENDING" | "APPROVED" | "REJECTED"; // Optional if types not yet generated
-};
-
-type TaskTableResourceFilter = {
-    id: string;
-    fullName: string | null;
 };
 
 interface TasksTableProps {
@@ -39,7 +39,7 @@ interface TasksTableProps {
     totalPages: number;
     statuses: ResourceTaskStatus[];
     projects: Project[];
-    resources: TaskTableResourceFilter[]; // For filter dropdown
+    resources: Resource[]; // For filter dropdown + task form
     canApprove?: boolean;
     currentResourceId?: string | null;
 }

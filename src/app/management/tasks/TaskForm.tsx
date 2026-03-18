@@ -5,7 +5,9 @@ import { createTaskAction, updateTaskAction } from "./taskActions";
 import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
 
 // Define simplified props or use existing types
-type TaskWithDetails = ResourceTask & {
+type TaskWithDetails = Omit<ResourceTask, "estimatedHours" | "actualHours"> & {
+    estimatedHours: number | null;
+    actualHours: number | null;
     status: ResourceTaskStatus;
     project: { name: string; id: string } | null;
     resource: { fullName: string; id: string } | null;
