@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { isTransientPrismaConnectionError } from "@/lib/prisma-resilience";
 
 // ── Error types ────────────────────────────────────────────────────
 
@@ -28,7 +29,10 @@ export const conflict = (msg: string) => new ApiError(409, msg);
 type ErrorResponseBody = {
     message: string;
     errors?: unknown[];
+    retryAfterSeconds?: number;
 };
+
+const RETRY_AFTER_SECONDS = 3;
 
 // ── Handler ────────────────────────────────────────────────────────
 
@@ -64,6 +68,16 @@ export function handleApiError(
         return NextResponse.json(
             { message: "Validation error", errors: error.issues },
             { status: 400 }
+        );
+    }
+
+    // Prisma transient connection errors -> 503 for retryable failures
+    if (isTransientPrismaConnectionError(error)) {
+        const message = "Database temporarily unavailable. Please retry shortly.";
+        console.warn(`[API] ${context}: Transient Prisma connection error`, error);
+        return NextResponse.json(
+            { message, retryAfterSeconds: RETRY_AFTER_SECONDS },
+            { status: 503 }
         );
     }
 
