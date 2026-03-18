@@ -125,61 +125,6 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
                 <div className="text-sm text-text-secondary">
                     Mostrando {loading || error ? 0 : paginatedRoles.length} de {totalFiltered} roles.
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <span>Page size</span>
-                        <select
-                            value={pageSize}
-                            onChange={(event) => {
-                                setPageSize(Number(event.target.value));
-                                setPage(1);
-                            }}
-                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
-                        >
-                            {pageSizes.map((size) => (
-                                <option key={size} value={size}>
-                                    {size}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <span>
-                            Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                            type="button"
-                            disabled={!canPrev}
-                            onClick={() => setPage((prev) => prev - 1)}
-                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
-                        >
-                            Prev
-                        </button>
-                        <div className="flex items-center gap-1">
-                            {visiblePages.map((visiblePage) => (
-                                <button
-                                    key={visiblePage}
-                                    type="button"
-                                    onClick={() => setPage(visiblePage)}
-                                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${visiblePage === currentPage
-                                        ? "bg-primary text-white"
-                                        : "border border-border bg-card text-text-secondary"
-                                        }`}
-                                >
-                                    {visiblePage}
-                                </button>
-                            ))}
-                        </div>
-                        <button
-                            type="button"
-                            disabled={!canNext}
-                            onClick={() => setPage((prev) => prev + 1)}
-                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-text-secondary disabled:opacity-50"
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
             </div>
 
             <div className="mt-4 max-h-[65vh] overflow-auto rounded-xl border border-border">
@@ -267,9 +212,28 @@ export default function RolesTable({ refreshTrigger, onEdit }: RolesTableProps) 
             </div>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
-                <span>
-                    Page {currentPage} of {totalPages} (total {totalFiltered})
-                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <span>Page size</span>
+                        <select
+                            value={pageSize}
+                            onChange={(event) => {
+                                setPageSize(Number(event.target.value));
+                                setPage(1);
+                            }}
+                            className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary"
+                        >
+                            {pageSizes.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <span>
+                        Page {currentPage} of {totalPages} (total {totalFiltered})
+                    </span>
+                </div>
                 <div className="flex items-center gap-2">
                     <button
                         type="button"

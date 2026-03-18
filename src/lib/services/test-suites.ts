@@ -33,31 +33,6 @@ type NormalizedTestSuiteCreateInput = {
   testCaseTags: string[];
 };
 
-function isRecoverableConnectionError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("connection terminated unexpectedly") ||
-    message.includes("can't reach database server") ||
-    message.includes("server has closed the connection")
-  );
-}
-
-async function withReconnectRetry<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (!isRecoverableConnectionError(error)) {
-      throw error;
-    }
-
-    await prisma.$disconnect().catch(() => undefined);
-    await prisma.$connect();
-    return operation();
-  }
-}
-
 function buildWhere(filters: ListTestSuitesParams): Prisma.TestSuiteWhereInput {
   const where: Prisma.TestSuiteWhereInput = {};
 
@@ -95,15 +70,13 @@ export async function listTestSuites({
   const where = buildWhere({ testSuiteId, specFile, testId });
 
   const [data, total] = await Promise.all([
-    withReconnectRetry(() =>
-      prisma.testSuite.findMany({
-        where,
-        orderBy: { testSuiteId: "asc" },
-        skip,
-        take: pageSize,
-      })
-    ),
-    withReconnectRetry(() => prisma.testSuite.count({ where })),
+    prisma.testSuite.findMany({
+      where,
+      orderBy: { testSuiteId: "asc" },
+      skip,
+      take: pageSize,
+    }),
+    prisma.testSuite.count({ where }),
   ]);
 
   return {
@@ -143,22 +116,20 @@ export async function createTestSuites(
     return { count: 0, skipped: totalInput };
   }
 
-  const existingRows = await withReconnectRetry(() =>
-    prisma.testSuite.findMany({
-      where: {
-        OR: uniqueRows.map((row) => ({
-          specFile: row.specFile,
-          testId: row.testId,
-          testCaseName: row.testCaseName,
-        })),
-      },
-      select: {
-        specFile: true,
-        testId: true,
-        testCaseName: true,
-      },
-    })
-  );
+  const existingRows = await prisma.testSuite.findMany({
+    where: {
+      OR: uniqueRows.map((row) => ({
+        specFile: row.specFile,
+        testId: row.testId,
+        testCaseName: row.testCaseName,
+      })),
+    },
+    select: {
+      specFile: true,
+      testId: true,
+      testCaseName: true,
+    },
+  });
 
   const existingKeys = new Set(existingRows.map((row) => buildDedupKey(row)));
   const rowsToInsert = uniqueRows.filter((row) => !existingKeys.has(buildDedupKey(row)));
@@ -167,14 +138,12 @@ export async function createTestSuites(
     return { count: 0, skipped: totalInput };
   }
 
-  const { count } = await withReconnectRetry(() =>
-    prisma.testSuite.createMany({
-      data: rowsToInsert.map((row) => ({
-        ...row,
-        testSuiteId: `suite-${randomUUID()}`,
-      })),
-    })
-  );
+  const { count } = await prisma.testSuite.createMany({
+    data: rowsToInsert.map((row) => ({
+      ...row,
+      testSuiteId: `suite-${randomUUID()}`,
+    })),
+  });
 
   return {
     count,

@@ -603,59 +603,6 @@ export default function TestSuitesTable({
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm shadow-border/40">
         <div className="flex flex-col gap-4 rounded-xl border border-border bg-surface/40 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="text-sm text-text-secondary">Showing {rows.length} of {total} results.</div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span>Page size</span>
-              <select
-                value={currentPageSize}
-                onChange={(e) => changePageSize(Number(e.target.value))}
-                className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
-              <span>
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={!canPrev}
-                onClick={() => goToPage(currentPage - 1)}
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-text-secondary disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Prev
-              </button>
-              <div className="flex items-center gap-1">
-                {visiblePages.map((page) => (
-                  <button
-                    key={`top-${page}`}
-                    type="button"
-                    onClick={() => goToPage(page)}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${
-                      page === currentPage
-                        ? "bg-primary text-white"
-                        : "border border-border bg-card text-text-secondary"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={!canNext}
-                onClick={() => goToPage(currentPage + 1)}
-                className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-text-secondary disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Next
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="relative mt-4">
@@ -769,7 +716,23 @@ export default function TestSuitesTable({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3 text-xs text-text-secondary">
-          <span>Total {total} results</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <span>Page size</span>
+              <select
+                value={currentPageSize}
+                onChange={(e) => changePageSize(Number(e.target.value))}
+                className="rounded-lg border border-border bg-card px-2 py-1 text-xs text-text-primary outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span>Total {total} results</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
