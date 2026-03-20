@@ -23,6 +23,7 @@ export const ACCOUNT_C10_COLUMNS = [
     "product_group_id",
     "available_balance",
     "account_id",
+    "customer_id",
     "officer_name",
     "currency",
     "legal_doc_name",
@@ -64,6 +65,8 @@ function getColumnType(column: string): string {
             return "REAL"; // Float
         case "account_id":
             return "INTEGER NOT NULL"; // Int
+        case "customer_id":
+            return "INTEGER"; // Int nullable
         case "officer_id":
             return "INTEGER"; // Int nullable
         default:
@@ -145,6 +148,21 @@ const CsvNumberSchema = z.string().nullable().optional().transform((val, ctx) =>
     return num;
 });
 
+const CsvIntegerSchema = z.string().nullable().optional().transform((val, ctx) => {
+    if (!val) return null;
+    const trimmed = val.trim();
+    if (trimmed.length === 0) return null;
+    const num = Number(trimmed);
+    if (isNaN(num) || !Number.isInteger(num)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Debe ser un número entero válido",
+        });
+        return z.NEVER;
+    }
+    return num;
+});
+
 const EMPTY_TO_NULL = (val: string | null | undefined) => {
     if (!val) return null;
     const trimmed = val.trim();
@@ -170,6 +188,7 @@ const AccountC10RowSchema = z.object({
         }
         return num;
     }),
+    customer_id: CsvIntegerSchema,
     officer_name: z.string().nullable().optional().transform(EMPTY_TO_NULL),
     currency: z.string().trim().min(1, "currency es requerido"),
     legal_doc_name: z.string().nullable().optional().transform(EMPTY_TO_NULL),
@@ -344,6 +363,7 @@ export async function listAccountC10(
             "product_id",
             "product_group_id",
             "account_id",
+            "customer_id",
             "officer_name",
             "currency",
             "legal_doc_name",
