@@ -20,10 +20,67 @@ type ActionResponse = {
     data?: any;
 };
 
+type RawTaskPayload = {
+    title?: string | null;
+    summary?: string | null;
+    resourceId?: string | null;
+    projectId?: string | null;
+    statusId?: string | null;
+    priority?: string | null;
+    dueDate?: Date | null;
+    estimatedHours?: number | null;
+    actualHours?: number | null;
+};
+
+function normalizeTaskPayload(input: RawTaskPayload) {
+    const title = input.title?.trim() ?? "";
+    const summary = input.summary?.trim() ?? "";
+    const resourceId = input.resourceId?.trim() ?? "";
+    const projectId = input.projectId?.trim() ?? "";
+    const statusId = input.statusId?.trim() ?? "";
+    const priority = input.priority?.trim().toLowerCase() ?? "";
+
+    const missing: string[] = [];
+    if (!title) missing.push("title");
+    if (!summary) missing.push("summary");
+    if (!resourceId) missing.push("assignTo");
+    if (!projectId) missing.push("project");
+    if (!priority) missing.push("priority");
+    if (!statusId) missing.push("status");
+
+    const validPriorities = new Set(["low", "medium", "high"]);
+    if (priority && !validPriorities.has(priority)) {
+        return { error: "Priority must be one of: low, medium, high." };
+    }
+
+    if (missing.length > 0) {
+        return { error: `Missing required fields: ${missing.join(", ")}.` };
+    }
+
+    return {
+        value: {
+            title,
+            summary,
+            resourceId,
+            projectId,
+            statusId,
+            priority,
+            dueDate: input.dueDate ?? null,
+            estimatedHours: input.estimatedHours ?? null,
+            actualHours: input.actualHours ?? null,
+        },
+    };
+}
+
 export async function createTaskAction(data: ResourceTaskCreateInput): Promise<ActionResponse> {
     await requireServer(Permission.TASKS_MANAGE);
 
     try {
+        const parsed = normalizeTaskPayload(data as unknown as RawTaskPayload);
+        if ("error" in parsed) {
+            return { success: false, message: parsed.error };
+        }
+
         const session = await getServerSession(authOptions);
 
         const user = await prisma.user.findUnique({
@@ -32,7 +89,7 @@ export async function createTaskAction(data: ResourceTaskCreateInput): Promise<A
         });
         const authorId = user?.resource?.id;
 
-        await createResourceTask(data, authorId);
+        await createResourceTask(parsed.value as unknown as ResourceTaskCreateInput, authorId);
         revalidatePath("/management/tasks");
         return { success: true, message: "Task created successfully" };
     } catch (error: any) {
@@ -48,6 +105,11 @@ export async function updateTaskAction(
     await requireServer(Permission.TASKS_MANAGE);
 
     try {
+        const parsed = normalizeTaskPayload(data as unknown as RawTaskPayload);
+        if ("error" in parsed) {
+            return { success: false, message: parsed.error };
+        }
+
         const session = await getServerSession(authOptions);
 
         const user = await prisma.user.findUnique({
@@ -56,7 +118,7 @@ export async function updateTaskAction(
         });
         const authorId = user?.resource?.id;
 
-        await updateResourceTask(id, data, authorId);
+        await updateResourceTask(id, parsed.value as unknown as ResourceTaskUpdateInput, authorId);
         revalidatePath("/management/tasks");
         return { success: true, message: "Task updated successfully" };
     } catch (error: any) {
