@@ -12,6 +12,7 @@ type QueryForm = {
     product_id: string;
     product_group_id: string;
     account_id: string;
+    customer_id: string;
     officer_name: string;
     currency: string;
     legal_doc_name: string;
@@ -39,6 +40,7 @@ type AccountC10Row = {
     product_group_id?: string;
     available_balance?: string | number;
     account_id?: string | number;
+    customer_id?: string | number;
     officer_name?: string;
     currency?: string;
     legal_doc_name?: string;
@@ -62,6 +64,7 @@ const initialForm: QueryForm = {
     product_id: "",
     product_group_id: "",
     account_id: "",
+    customer_id: "",
     officer_name: "",
     currency: "",
     legal_doc_name: "",
@@ -116,6 +119,7 @@ export default function AccountC10DatasetPage() {
             { key: "product_id", label: "Product ID" },
             { key: "product_group_id", label: "Product Group ID" },
             { key: "account_id", label: "Account ID" },
+            { key: "customer_id", label: "Customer ID" },
             { key: "officer_name", label: "Officer Name" },
             { key: "currency", label: "Currency" },
             { key: "legal_doc_name", label: "Legal Doc Name" },

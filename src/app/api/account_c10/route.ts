@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
         product_id: getValue("product_id"),
         product_group_id: getValue("product_group_id"),
         account_id: getValue("account_id"),
+        customer_id: getValue("customer_id"),
         officer_name: getValue("officer_name"),
         currency: getValue("currency"),
         legal_doc_name: getValue("legal_doc_name"),
