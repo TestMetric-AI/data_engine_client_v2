@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import Modal from "@/components/ui/Modal";
 import { createDailyAction, getDailiesAction, deleteDailyAction } from "./dailyActions";
@@ -12,19 +12,24 @@ interface TaskDailiesModalProps {
     task: { id: string; title: string } | null;
 }
 
+interface DailyItem {
+    id: string;
+    content: string;
+    date: string | Date;
+    resource: {
+        fullName: string;
+    };
+}
+
 export default function TaskDailiesModal({ isOpen, onClose, task }: TaskDailiesModalProps) {
-    const [dailies, setDailies] = useState<any[]>([]);
+    const [dailies, setDailies] = useState<DailyItem[]>([]);
     const [loading, setLoading] = useState(false);
     const [content, setContent] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [deleteDailyModalOpen, setDeleteDailyModalOpen] = useState(false);
+    const [dailyToDelete, setDailyToDelete] = useState<DailyItem | null>(null);
 
-    useEffect(() => {
-        if (isOpen && task) {
-            fetchDailies();
-        }
-    }, [isOpen, task]);
-
-    async function fetchDailies() {
+    const fetchDailies = useCallback(async () => {
         if (!task) return;
         setLoading(true);
         const res = await getDailiesAction(task.id);
@@ -32,7 +37,15 @@ export default function TaskDailiesModal({ isOpen, onClose, task }: TaskDailiesM
             setDailies(res.data);
         }
         setLoading(false);
-    }
+    }, [task]);
+
+    useEffect(() => {
+        if (!isOpen || !task) return;
+        const timer = window.setTimeout(() => {
+            void fetchDailies();
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [fetchDailies, isOpen, task]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -54,10 +67,17 @@ export default function TaskDailiesModal({ isOpen, onClose, task }: TaskDailiesM
         setSubmitting(false);
     }
 
-    async function handleDelete(dailyId: string) {
-        if (!confirm("Are you sure?")) return;
-        const res = await deleteDailyAction(dailyId);
+    function initiateDeleteDaily(daily: DailyItem) {
+        setDailyToDelete(daily);
+        setDeleteDailyModalOpen(true);
+    }
+
+    async function handleDelete() {
+        if (!dailyToDelete) return;
+        const res = await deleteDailyAction(dailyToDelete.id);
         if (res.success) {
+            setDeleteDailyModalOpen(false);
+            setDailyToDelete(null);
             fetchDailies();
         } else {
             alert(res.message);
@@ -86,7 +106,7 @@ export default function TaskDailiesModal({ isOpen, onClose, task }: TaskDailiesM
                                         </span>
                                     </div>
                                     <button
-                                        onClick={() => handleDelete(daily.id)}
+                                        onClick={() => initiateDeleteDaily(daily)}
                                         className="text-text-secondary hover:text-rose-600"
                                         title="Delete Daily"
                                     >
@@ -121,6 +141,38 @@ export default function TaskDailiesModal({ isOpen, onClose, task }: TaskDailiesM
                     </div>
                 </form>
             </div>
+
+            <Modal
+                isOpen={deleteDailyModalOpen}
+                onClose={() => {
+                    setDeleteDailyModalOpen(false);
+                    setDailyToDelete(null);
+                }}
+                title="Delete Daily"
+            >
+                <div className="flex flex-col gap-4">
+                    <p className="text-text-secondary">
+                        Are you sure you want to delete this daily update?
+                    </p>
+                    <div className="mt-2 flex justify-end gap-3">
+                        <button
+                            onClick={() => {
+                                setDeleteDailyModalOpen(false);
+                                setDailyToDelete(null);
+                            }}
+                            className="rounded-xl px-4 py-2 text-sm font-semibold text-text-secondary transition hover:bg-surface"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleDelete}
+                            className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </Modal>
     );
 }

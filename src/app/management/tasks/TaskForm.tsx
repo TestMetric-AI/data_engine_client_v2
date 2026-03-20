@@ -127,6 +127,7 @@ export default function TaskForm({ taskToEdit, statuses, projects, resources, on
                     <textarea
                         id="summary"
                         rows={3}
+                        required
                         value={formData.summary}
                         onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
                         className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-primary focus:border-primary focus:outline-none"
@@ -161,11 +162,12 @@ export default function TaskForm({ taskToEdit, statuses, projects, resources, on
                     </label>
                     <select
                         id="projectId"
+                        required
                         value={formData.projectId}
                         onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
                         className="rounded-xl border border-border bg-surface px-4 py-2 text-sm text-text-primary focus:border-primary focus:outline-none"
                     >
-                        <option value="">No Project</option>
+                        <option value="">Select Project</option>
                         {projects.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}

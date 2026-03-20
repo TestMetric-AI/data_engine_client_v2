@@ -1,5 +1,6 @@
 const TEAMS_WEBHOOK_URL = process.env.TEAMS_WEBHOOK;
 const JUAN_CASTRO_ID = process.env.JUAN_CASTRO_ID;
+const APP_BASE_URL = process.env.NEXTAUTH_URL;
 
 export type TeamsTaskNotificationPayload = {
     taskTitle: string;
@@ -16,6 +17,10 @@ function buildNewTaskCard(payload: TeamsTaskNotificationPayload) {
     const mentionText = `<at>${assigneeName}</at>`;
     const safeTaskTitle = taskTitle?.trim();
     const safeCreatedBy = createdByName?.trim();
+    const baseUrl = APP_BASE_URL?.replace(/\/+$/, "");
+    const taskModuleUrl = baseUrl
+        ? `${baseUrl}/management/tasks`
+        : "/management/tasks";
 
     const taskSuffix = safeTaskTitle ? `: ${safeTaskTitle}` : "";
     const creatorSuffix = safeCreatedBy ? ` (creada por ${safeCreatedBy})` : "";
@@ -43,6 +48,11 @@ function buildNewTaskCard(payload: TeamsTaskNotificationPayload) {
                         {
                             type: "TextBlock",
                             text: `Creada por: ${creatorSuffix}`,
+                            wrap: true,
+                        },
+                        {
+                            type: "TextBlock",
+                            text: `Modulo de tareas: [management/tasks](${taskModuleUrl})`,
                             wrap: true,
                         },
                     ],
