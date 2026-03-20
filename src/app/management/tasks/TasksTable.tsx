@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { MagnifyingGlassIcon, PencilSquareIcon, TrashIcon, CheckIcon, XMarkIcon, CheckCircleIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import { ResourceTask, ResourceTaskStatus, Project, Resource } from "@/generated/prisma/client";
@@ -68,9 +68,12 @@ export default function TasksTable({
     const [projectId, setProjectId] = useState(searchParams.get("projectId") || "");
     const [resourceId, setResourceId] = useState(searchParams.get("resourceId") || "");
 
-    // Debounce search
+    // Use a ref for searchParams to avoid recreating updateFilters on every render
+    const searchParamsRef = useRef(searchParams);
+    searchParamsRef.current = searchParams;
+
     const updateFilters = useCallback((updates: Record<string, string>) => {
-        const params = new URLSearchParams(searchParams.toString());
+        const params = new URLSearchParams(searchParamsRef.current.toString());
         Object.entries(updates).forEach(([key, value]) => {
             if (value) {
                 params.set(key, value);
@@ -79,9 +82,15 @@ export default function TasksTable({
             }
         });
         router.push(`${pathname}?${params.toString()}`);
-    }, [pathname, router, searchParams]);
+    }, [pathname, router]);
 
+    // Debounce search - only trigger on actual user input changes
+    const isFirstRender = useRef(true);
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         const timer = setTimeout(() => {
             updateFilters({ search, page: "1" });
         }, 500);
